@@ -1,29 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-
-const fadeUp = {
-  hidden: {
-    opacity: 0,
-    y: 60,
-  },
-
-  visible: {
-    opacity: 1,
-    y: 0,
-
-    transition: {
-      duration: 0.7,
-    },
-  },
-};
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] overflow-x-hidden relative">
       {/* BACKGROUND */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.30),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.22),transparent_30%),radial-gradient(circle_at_50%_90%,rgba(147,197,253,0.28),transparent_35%)]" />
+
+      {/* FLOAT ANIMATION */}
+      <style jsx global>{`
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-18px);
+          }
+        }
+
+        .animate-float {
+          animation: float 5s ease-in-out infinite;
+        }
+      `}</style>
 
       {/* NAVBAR */}
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-7xl rounded-full border border-white/70 bg-white/45 backdrop-blur-2xl shadow-2xl px-6 py-4 flex items-center justify-between">
@@ -52,11 +52,8 @@ export default function HomePage() {
         {/* LINKS */}
         <div className="hidden md:flex items-center gap-8 font-semibold text-slate-700">
           <a href="#features">Features</a>
-
           <a href="#about">About Us</a>
-
           <a href="#overview">Overview</a>
-
           <a href="#contact">Contact</a>
         </div>
 
@@ -77,14 +74,7 @@ export default function HomePage() {
       </nav>
 
       {/* HERO */}
-      <motion.section
-        id="hero"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        variants={fadeUp}
-        className="relative z-10 max-w-7xl mx-auto px-8 pt-48 pb-24"
-      >
+      <section className="relative z-10 max-w-7xl mx-auto px-8 pt-48 pb-24">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* LEFT */}
           <div className="max-w-3xl">
@@ -130,39 +120,30 @@ export default function HomePage() {
                 ["2K+", "Startup Ideas"],
                 ["500+", "Mentors"],
               ].map(([number, label]) => (
-                <motion.div
-                  whileHover={{
-                    scale: 1.05,
-                    y: -10,
-                  }}
+                <div
                   key={label}
                   className="rounded-[28px] bg-white/65 border border-white/70 p-6 shadow-xl backdrop-blur-xl"
                 >
                   <h2 className="text-3xl font-black">{number}</h2>
 
                   <p className="text-slate-600 mt-2">{label}</p>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
 
           {/* RIGHT SIDE */}
           <div className="relative h-[650px] hidden lg:flex items-center justify-center">
-            {/* GLOW */}
+            {/* BIG GLOW */}
             <div className="absolute w-[600px] h-[600px] rounded-full bg-blue-400/20 blur-3xl animate-pulse" />
 
-            {/* ORBIT */}
+            {/* ORBIT RINGS */}
             <div className="absolute w-[520px] h-[520px] border border-blue-200/40 rounded-full animate-spin [animation-duration:25s]" />
 
             <div className="absolute w-[380px] h-[380px] border border-cyan-200/40 rounded-full animate-spin [animation-duration:18s] [animation-direction:reverse]" />
 
             {/* MAIN CARD */}
-            <motion.div
-              whileHover={{
-                scale: 1.05,
-              }}
-              className="absolute z-20 w-[340px] rounded-[42px] bg-white/70 border border-white/80 backdrop-blur-3xl p-8 shadow-[0_35px_80px_rgba(59,130,246,0.25)] animate-float"
-            >
+            <div className="absolute z-20 w-[340px] rounded-[42px] bg-white/70 border border-white/80 backdrop-blur-3xl p-8 shadow-[0_35px_80px_rgba(59,130,246,0.25)] hover:scale-105 transition duration-500 animate-float">
               <div className="flex items-center gap-5 mb-6">
                 <div className="w-20 h-20 rounded-[28px] bg-blue-100 flex items-center justify-center text-5xl shadow-lg">
                   🚀
@@ -198,18 +179,64 @@ export default function HomePage() {
                   </p>
                 </div>
               </div>
-            </motion.div>
+            </div>
+
+            {/* INVESTOR CARD */}
+            <div className="absolute top-10 right-0 z-30 w-[240px] rounded-[36px] bg-white/70 border border-white/80 backdrop-blur-3xl p-6 shadow-2xl animate-[float_5s_ease-in-out_infinite]">
+              <div className="text-5xl mb-4">💰</div>
+
+              <h2 className="text-3xl font-black">Investors</h2>
+
+              <p className="text-slate-600 mt-3 leading-relaxed">
+                Connect with VCs & Angel Investors
+              </p>
+            </div>
+
+            {/* MENTOR CARD */}
+            <div className="absolute bottom-10 left-10 z-30 w-[250px] rounded-[36px] bg-white/70 border border-white/80 backdrop-blur-3xl p-6 shadow-2xl animate-[float_6s_ease-in-out_infinite]">
+              <div className="text-5xl mb-4">🧑‍🏫</div>
+
+              <h2 className="text-3xl font-black">Mentors</h2>
+
+              <p className="text-slate-600 mt-3">
+                Get guidance from experts
+              </p>
+            </div>
+
+            {/* AI CARD */}
+            <div className="absolute bottom-16 right-8 z-40 w-[290px] rounded-[38px] bg-gradient-to-br from-[#07162b] to-blue-700 text-white p-8 shadow-[0_35px_90px_rgba(15,23,42,0.45)] animate-[float_4s_ease-in-out_infinite]">
+              <h2 className="text-5xl font-black mb-5">
+                AI Matching
+              </h2>
+
+              <p className="text-blue-100 leading-relaxed text-lg">
+                Smart teammate & investor recommendations powered by AI.
+              </p>
+
+              <div className="mt-7 flex gap-3">
+                <span className="bg-white/20 px-4 py-2 rounded-full text-sm">
+                  AI
+                </span>
+
+                <span className="bg-white/20 px-4 py-2 rounded-full text-sm">
+                  Startups
+                </span>
+              </div>
+            </div>
+
+            {/* PARTICLES */}
+            <div className="absolute top-24 left-16 w-4 h-4 bg-blue-400 rounded-full animate-ping" />
+
+            <div className="absolute bottom-24 right-32 w-3 h-3 bg-cyan-400 rounded-full animate-pulse" />
+
+            <div className="absolute top-1/2 left-0 w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
           </div>
         </div>
-      </motion.section>
+      </section>
 
       {/* FEATURES */}
-      <motion.section
+      <section
         id="features"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        variants={fadeUp}
         className="relative z-10 max-w-7xl mx-auto px-8 py-20"
       >
         <div className="rounded-[48px] bg-white/60 border border-white/80 shadow-2xl p-10">
@@ -224,24 +251,115 @@ export default function HomePage() {
               ["💡", "Startup Ideas", "Share ideas and get feedback"],
               ["🏆", "Hackathons", "Find innovation challenges"],
             ].map(([icon, title, desc]) => (
-              <motion.div
-                whileHover={{
-                  scale: 1.05,
-                  y: -10,
-                }}
+              <div
                 key={title}
-                className="rounded-[32px] bg-white/75 border border-white p-7 shadow-xl"
+                className="rounded-[32px] bg-white/75 border border-white p-7 shadow-xl hover:-translate-y-2 transition"
               >
                 <div className="text-5xl mb-5">{icon}</div>
 
                 <h3 className="text-2xl font-black">{title}</h3>
 
                 <p className="text-slate-600 mt-3">{desc}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
-      </motion.section>
+      </section>
+
+      {/* ABOUT */}
+      <section
+        id="about"
+        className="relative z-10 max-w-7xl mx-auto px-8 py-20"
+      >
+        <div className="grid lg:grid-cols-2 gap-8">
+          <div className="rounded-[48px] bg-[#07162b] text-white p-12 shadow-2xl">
+            <h2 className="text-5xl font-black mb-6">
+              About CampusConnectAI
+            </h2>
+
+            <p className="text-blue-100 text-lg leading-relaxed">
+              CampusConnectAI is an AI-powered student collaboration,
+              startup and innovation ecosystem designed to help students
+              build teams, share ideas, participate in hackathons and showcase skills.
+            </p>
+          </div>
+
+          <div className="rounded-[48px] bg-white/70 border border-white/80 p-12 shadow-2xl">
+            <h2 className="text-5xl font-black mb-8">
+              Why It Matters
+            </h2>
+
+            <div className="space-y-5 text-lg text-slate-600">
+              <p>✅ Create profile once and reuse everywhere</p>
+
+              <p>✅ Discover students, founders, mentors and investors</p>
+
+              <p>✅ Build teams and collaborate on startup projects</p>
+
+              <p>✅ Manage your posts, requests and courses</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* OVERVIEW */}
+      <section
+        id="overview"
+        className="relative z-10 max-w-7xl mx-auto px-8 py-20"
+      >
+        <div className="rounded-[48px] bg-white/70 border border-white/80 p-12 shadow-2xl">
+          <h2 className="text-5xl font-black mb-10">
+            Platform Overview
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              ["01", "Create Profile", "Add skills, interests, bio and links"],
+              ["02", "Discover & Connect", "Find people and startup ideas"],
+              ["03", "Collaborate", "Form teams and build projects"],
+            ].map(([num, title, desc]) => (
+              <div
+                key={title}
+                className="rounded-[32px] bg-white p-8 shadow-xl"
+              >
+                <h3 className="text-5xl font-black text-blue-600">
+                  {num}
+                </h3>
+
+                <h4 className="text-2xl font-black mt-5">
+                  {title}
+                </h4>
+
+                <p className="text-slate-600 mt-3">
+                  {desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CONTACT */}
+      <section
+        id="contact"
+        className="relative z-10 max-w-7xl mx-auto px-8 py-20 pb-32"
+      >
+        <div className="rounded-[48px] bg-[#07162b] text-white p-12 shadow-2xl text-center">
+          <h2 className="text-5xl font-black mb-5">
+            Ready to Start?
+          </h2>
+
+          <p className="text-blue-100 text-lg mb-8">
+            Join the student startup ecosystem and start building today.
+          </p>
+
+          <Link href="/onboarding">
+            <button className="bg-blue-600 text-white px-12 py-5 rounded-full font-black text-lg shadow-2xl hover:scale-105 transition">
+              Get Started 🚀
+            </button>
+          </Link>
+        </div>
+      </section>
     </main>
   );
 }
