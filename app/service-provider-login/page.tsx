@@ -11,374 +11,234 @@ import {
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 
-import {
-  auth,
-  googleProvider,
-} from "@/lib/firebase";
+import { auth, googleProvider } from "@/lib/firebase";
 
 export default function ServiceProviderLoginPage() {
   const router = useRouter();
 
-  const [isSignup, setIsSignup] =
-    useState(false);
+  const [isSignup, setIsSignup] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+  const goNext = () => {
+    const completed =
+      localStorage.getItem("serviceProviderProfileCompleted") === "true";
 
-  const [email, setEmail] =
-    useState("");
+    if (completed) {
+      router.push("/service-provider-dashboard");
+    } else {
+      router.push("/service-provider-profile");
+    }
+  };
 
-  const [password, setPassword] =
-    useState("");
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
 
-  // =========================
-  // GOOGLE LOGIN
-  // =========================
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
 
-  const handleGoogleLogin =
-    async () => {
-      try {
-        setLoading(true);
+      localStorage.setItem("serviceProviderLoggedIn", "true");
+      localStorage.setItem(
+        "serviceProviderUser",
+        JSON.stringify({
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          photo: user.photoURL,
+        })
+      );
 
-        const result =
-          await signInWithPopup(
-            auth,
-            googleProvider
-          );
+      goNext();
+    } catch (error: any) {
+      alert(error.message || "Google Login Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        const user =
-          result.user;
+  const handleEmailAuth = async () => {
+    if (!email || !password) {
+      alert("Please fill all fields");
+      return;
+    }
 
-        // SAVE LOGIN
+    try {
+      setLoading(true);
 
-        localStorage.setItem(
-          "serviceProviderLoggedIn",
-          "true"
-        );
+      const result = isSignup
+        ? await createUserWithEmailAndPassword(auth, email, password)
+        : await signInWithEmailAndPassword(auth, email, password);
 
-        localStorage.setItem(
-          "serviceProviderUser",
-          JSON.stringify({
-            uid: user.uid,
-            name:
-              user.displayName,
-            email:
-              user.email,
-            photo:
-              user.photoURL,
-          })
-        );
+      localStorage.setItem("serviceProviderLoggedIn", "true");
+      localStorage.setItem(
+        "serviceProviderUser",
+        JSON.stringify({
+          uid: result.user.uid,
+          email: result.user.email,
+        })
+      );
 
-        // CHECK PROFILE
-
-        const completed =
-          localStorage.getItem(
-            "serviceProviderProfileCompleted"
-          );
-
-        // REDIRECT
-
-        if (
-          completed ===
-          "true"
-        ) {
-          router.push(
-            "/service-provider-dashboard"
-          );
-        } else {
-          router.push(
-            "/service-provider-profile"
-          );
-        }
-      } catch (error) {
-        console.error(error);
-
-        alert(
-          "Google Login Failed"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-  // =========================
-  // EMAIL LOGIN / SIGNUP
-  // =========================
-
-  const handleEmailAuth =
-    async () => {
-      if (
-        !email ||
-        !password
-      ) {
-        alert(
-          "Please fill all fields"
-        );
-
-        return;
-      }
-
-      try {
-        setLoading(true);
-
-        let userCredential;
-
-        // SIGNUP
-
-        if (isSignup) {
-          userCredential =
-            await createUserWithEmailAndPassword(
-              auth,
-              email,
-              password
-            );
-        }
-
-        // LOGIN
-
-        else {
-          userCredential =
-            await signInWithEmailAndPassword(
-              auth,
-              email,
-              password
-            );
-        }
-
-        const user =
-          userCredential.user;
-
-        // SAVE LOGIN
-
-        localStorage.setItem(
-          "serviceProviderLoggedIn",
-          "true"
-        );
-
-        localStorage.setItem(
-          "serviceProviderUser",
-          JSON.stringify({
-            uid: user.uid,
-            email:
-              user.email,
-          })
-        );
-
-        // CHECK PROFILE
-
-        const completed =
-          localStorage.getItem(
-            "serviceProviderProfileCompleted"
-          );
-
-        // REDIRECT
-
-        if (
-          completed ===
-          "true"
-        ) {
-          router.push(
-            "/service-provider-dashboard"
-          );
-        } else {
-          router.push(
-            "/service-provider-profile"
-          );
-        }
-      } catch (error: any) {
-        console.error(error);
-
-        alert(
-          error.message
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+      goNext();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#eef4ff] via-[#f6f9ff] to-[#eaf8ff] flex items-center justify-center p-6 overflow-hidden">
-      {/* BACKGROUND GLOW */}
+    <main className="min-h-screen relative overflow-hidden bg-[#f5f7fb] flex items-center justify-center px-6 py-10">
+      {/* iOS 26 liquid glass background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(59,130,246,0.35),transparent_35%),radial-gradient(circle_at_85%_20%,rgba(249,115,22,0.30),transparent_35%),radial-gradient(circle_at_50%_90%,rgba(14,165,233,0.25),transparent_40%)]" />
+      <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-blue-400/20 blur-3xl animate-pulse" />
+      <div className="absolute -bottom-28 -right-28 w-[520px] h-[520px] rounded-full bg-orange-400/20 blur-3xl animate-pulse" />
 
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-orange-300/20 blur-3xl rounded-full animate-pulse" />
+      <div className="relative z-10 w-full max-w-6xl grid lg:grid-cols-2 gap-8">
+        {/* LEFT GLASS HERO */}
+        <section className="rounded-[48px] bg-white/35 backdrop-blur-3xl border border-white/60 shadow-[0_30px_100px_rgba(15,23,42,0.18)] p-10 lg:p-14 overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/20 to-transparent" />
 
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-300/20 blur-3xl rounded-full animate-pulse" />
-
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white/80 backdrop-blur-xl rounded-[45px] overflow-hidden shadow-2xl relative z-10">
-        {/* LEFT */}
-
-        <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 text-white p-14 flex flex-col justify-center relative overflow-hidden">
-          {/* GLOW */}
-
-          <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-white/10 blur-3xl rounded-full" />
-
-          {/* ICON */}
-
-          <div className="relative z-10 w-32 h-32 rounded-[35px] bg-white/20 backdrop-blur-xl flex items-center justify-center text-7xl shadow-2xl">
-            🛠️
-          </div>
-
-          {/* TEXT */}
-
-          <h1 className="relative z-10 text-6xl font-black mt-10 leading-tight">
-            Service Provider Portal
-          </h1>
-
-          <p className="relative z-10 text-white/80 text-xl mt-6 leading-relaxed">
-            Offer AI, cloud,
-            development, design
-            and startup services
-            to founders and
-            growing startups.
-          </p>
-
-          {/* FEATURES */}
-
-          <div className="relative z-10 mt-10 space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="w-3 h-3 rounded-full bg-white" />
-
-              <p className="text-lg">
-                Post Services
-              </p>
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-3 bg-white/50 border border-white/60 backdrop-blur-xl rounded-full px-5 py-3 shadow-lg">
+              <span className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+              <span className="font-bold text-slate-700">
+                CampusConnectAI Services
+              </span>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="w-3 h-3 rounded-full bg-white" />
+            <div className="mt-12 text-8xl">🛠️</div>
 
-              <p className="text-lg">
-                Manage Projects
-              </p>
-            </div>
+            <h1 className="text-6xl lg:text-7xl font-black text-[#071739] leading-[0.9] mt-8">
+              Service
+              <br />
+              Provider
+              <br />
+              Portal
+            </h1>
 
-            <div className="flex items-center gap-4">
-              <div className="w-3 h-3 rounded-full bg-white" />
-
-              <p className="text-lg">
-                Connect Startups
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT */}
-
-        <div className="p-12 flex flex-col justify-center">
-          <div className="max-w-md mx-auto w-full">
-            <h2 className="text-5xl font-black text-[#071739]">
-              {isSignup
-                ? "Create Account"
-                : "Welcome Back"}
-            </h2>
-
-            <p className="text-slate-500 mt-4 text-lg">
-              {isSignup
-                ? "Create your service provider account"
-                : "Login to continue"}
+            <p className="text-xl text-slate-600 leading-relaxed mt-8 max-w-xl">
+              Offer AI, development, cloud, design and startup services with a
+              clean liquid-glass workspace.
             </p>
 
-            {/* FORM */}
+            <div className="grid grid-cols-3 gap-4 mt-12">
+              {[
+                ["Post", "Services"],
+                ["Manage", "Projects"],
+                ["Connect", "Startups"],
+              ].map(([a, b]) => (
+                <div
+                  key={a}
+                  className="rounded-[28px] bg-white/45 backdrop-blur-2xl border border-white/60 p-5 shadow-xl"
+                >
+                  <h3 className="text-2xl font-black text-[#071739]">{a}</h3>
+                  <p className="text-slate-500 font-semibold mt-1">{b}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-            <div className="mt-10 space-y-5">
+        {/* LOGIN GLASS CARD */}
+        <section className="rounded-[48px] bg-white/55 backdrop-blur-3xl border border-white/70 shadow-[0_30px_100px_rgba(15,23,42,0.20)] p-8 lg:p-12 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/70 via-white/25 to-transparent" />
+
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-5xl font-black text-[#071739]">
+                  {isSignup ? "Create Account" : "Welcome Back"}
+                </h2>
+                <p className="text-slate-500 text-lg mt-3">
+                  {isSignup
+                    ? "Start your provider journey"
+                    : "Login to your provider workspace"}
+                </p>
+              </div>
+
+              <div className="text-5xl">✨</div>
+            </div>
+
+            <div className="space-y-5 mt-10">
               <input
                 type="email"
                 placeholder="Email Address"
-                className="input-box"
+                className="ios-input"
                 value={email}
-                onChange={(e) =>
-                  setEmail(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => setEmail(e.target.value)}
               />
 
               <input
                 type="password"
                 placeholder="Password"
-                className="input-box"
+                className="ios-input"
                 value={password}
-                onChange={(e) =>
-                  setPassword(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => setPassword(e.target.value)}
               />
 
-              {/* LOGIN BUTTON */}
-
               <button
-                onClick={
-                  handleEmailAuth
-                }
+                onClick={handleEmailAuth}
                 disabled={loading}
-                className="w-full bg-[#071739] hover:bg-blue-700 transition text-white py-5 rounded-2xl text-xl font-black shadow-xl hover:scale-[1.02]"
+                className="w-full rounded-[24px] bg-[#071739] text-white py-5 text-xl font-black shadow-[0_20px_45px_rgba(7,23,57,0.35)] hover:scale-[1.02] hover:bg-blue-700 transition disabled:opacity-60"
               >
-                {loading
-                  ? "Please Wait..."
-                  : isSignup
-                  ? "Create Account"
-                  : "Login"}
+                {loading ? "Please Wait..." : isSignup ? "Create Account" : "Login"}
               </button>
 
-              {/* GOOGLE */}
-
               <button
-                onClick={
-                  handleGoogleLogin
-                }
+                onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full border-2 border-slate-200 hover:border-orange-400 transition py-5 rounded-2xl text-lg font-bold flex items-center justify-center gap-4 hover:shadow-xl"
+                className="w-full rounded-[24px] bg-white/70 border border-white shadow-xl py-5 text-lg font-black flex items-center justify-center gap-4 hover:scale-[1.02] hover:bg-white transition disabled:opacity-60"
               >
                 <img
                   src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                   alt="google"
                   className="w-7 h-7"
                 />
-
-                Continue with
-                Google
+                Continue with Google
               </button>
 
-              {/* TOGGLE */}
+              <button
+                onClick={() => setIsSignup(!isSignup)}
+                className="w-full text-orange-600 font-black mt-4"
+              >
+                {isSignup
+                  ? "Already have an account? Login"
+                  : "Don’t have an account? Sign Up"}
+              </button>
+            </div>
 
-              <div className="text-center mt-6">
-                <button
-                  onClick={() =>
-                    setIsSignup(
-                      !isSignup
-                    )
-                  }
-                  className="text-orange-600 font-bold"
-                >
-                  {isSignup
-                    ? "Already have an account? Login"
-                    : "Don't have an account? Sign Up"}
-                </button>
-              </div>
+            <div className="mt-10 rounded-[30px] bg-white/45 backdrop-blur-xl border border-white/60 p-5">
+              <p className="text-slate-600 font-semibold">
+                🔐 First login will redirect to profile setup. After completion,
+                you’ll go directly to the dashboard.
+              </p>
             </div>
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* GLOBAL STYLES */}
-
       <style jsx global>{`
-        .input-box {
+        .ios-input {
           width: 100%;
-          border: 1px solid #dbe4f0;
-          background: #f8fbff;
-          padding: 18px 20px;
-          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.75);
+          background: rgba(255, 255, 255, 0.62);
+          backdrop-filter: blur(24px);
+          padding: 20px 22px;
+          border-radius: 24px;
           outline: none;
           transition: 0.3s;
           font-size: 16px;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7),
+            0 10px 30px rgba(15, 23, 42, 0.08);
         }
 
-        .input-box:focus {
-          border-color: #f97316;
-          background: white;
-          box-shadow: 0 0 0 4px
-            rgba(249, 115, 22, 0.1);
+        .ios-input:focus {
+          border-color: rgba(59, 130, 246, 0.9);
+          background: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.12),
+            0 18px 40px rgba(15, 23, 42, 0.12);
         }
       `}</style>
     </main>

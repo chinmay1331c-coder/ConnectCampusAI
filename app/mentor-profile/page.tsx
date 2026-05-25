@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
 
 const industryOptions = [
   "AI",
@@ -35,50 +33,27 @@ export default function MentorProfilePage() {
   });
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    const loggedIn = localStorage.getItem("mentorLoggedIn");
 
-  const loadProfile = async () => {
-    const user = auth.currentUser;
-
-    if (!user) {
-      window.location.href = "/mentor-dashboard";
+    if (loggedIn !== "true") {
+      window.location.href = "/mentor-login";
       return;
     }
 
-    const snap = await getDoc(doc(db, "mentorProfiles", user.uid));
+    const saved = localStorage.getItem("mentorProfile");
 
-    if (snap.exists()) {
-      const data = snap.data();
-
-      setProfile({
-        mentorName: data.mentorName || user.displayName || "",
-        designation: data.designation || "",
-        organization: data.organization || "",
-        bio: data.bio || "",
-        experience: data.experience || "",
-        linkedin: data.linkedin || "",
-        website: data.website || "",
-        email: data.email || user.email || "",
-        languages: data.languages || "",
-        photo: data.photo || "",
-        skills: Array.isArray(data.skills)
-          ? data.skills
-          : data.skills
-          ? String(data.skills).split(",").map((s) => s.trim())
-          : [],
-        industries: data.industries || [],
-      });
+    if (saved) {
+      setProfile(JSON.parse(saved));
     } else {
       setProfile((prev) => ({
         ...prev,
-        mentorName: user.displayName || "",
-        email: user.email || "",
+        mentorName: "Demo Mentor",
+        email: "mentor@campusconnect.ai",
       }));
     }
 
     setLoading(false);
-  };
+  }, []);
 
   const uploadImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,14 +112,7 @@ export default function MentorProfilePage() {
     }
   };
 
-  const saveProfile = async () => {
-    const user = auth.currentUser;
-
-    if (!user) {
-      alert("Please login first");
-      return;
-    }
-
+  const saveProfile = () => {
     if (
       !profile.mentorName ||
       !profile.photo ||
@@ -163,31 +131,22 @@ export default function MentorProfilePage() {
       return;
     }
 
-    try {
-      setSaving(true);
+    setSaving(true);
 
-      const profileData = {
-        uid: user.uid,
-        ...profile,
-        role: "Mentor",
-        profileCompleted: true,
-        updatedAt: new Date().toISOString(),
-      };
+    const profileData = {
+      ...profile,
+      role: "Mentor",
+      profileCompleted: true,
+      updatedAt: new Date().toISOString(),
+    };
 
-      await setDoc(doc(db, "mentorProfiles", user.uid), profileData, {
-        merge: true,
-      });
+    localStorage.setItem("mentorProfile", JSON.stringify(profileData));
+    localStorage.setItem("mentorProfileCompleted", "true");
 
-      localStorage.setItem("mentorProfile", JSON.stringify(profileData));
-      localStorage.setItem("mentorProfileCompleted", "true");
+    alert("Mentor profile saved ✅");
 
-      alert("Mentor profile saved ✅");
-      window.location.href = "/mentor-portal";
-    } catch (error: any) {
-      alert(error.message);
-    } finally {
-      setSaving(false);
-    }
+    setSaving(false);
+    window.location.href = "/mentor-portal";
   };
 
   if (loading) {
@@ -251,9 +210,7 @@ export default function MentorProfilePage() {
 
         <div className="grid lg:grid-cols-3 gap-8">
           <section className="rounded-[40px] bg-white/75 border border-white/80 shadow-2xl p-8">
-            <h2 className="text-3xl font-black mb-6">
-              👤 Basic Details
-            </h2>
+            <h2 className="text-3xl font-black mb-6">👤 Basic Details</h2>
 
             <div className="w-44 h-44 mx-auto rounded-[32px] bg-blue-100 overflow-hidden flex items-center justify-center text-7xl shadow-xl mb-6">
               {profile.photo ? (
@@ -315,9 +272,7 @@ export default function MentorProfilePage() {
           </section>
 
           <section className="rounded-[40px] bg-white/75 border border-white/80 shadow-2xl p-8 lg:col-span-2">
-            <h2 className="text-3xl font-black mb-6">
-              📄 About & Experience
-            </h2>
+            <h2 className="text-3xl font-black mb-6">📄 About & Experience</h2>
 
             <textarea
               placeholder="Bio / About *"
@@ -407,9 +362,7 @@ export default function MentorProfilePage() {
           </section>
 
           <section className="rounded-[40px] bg-white/75 border border-white/80 shadow-2xl p-8 lg:col-span-3">
-            <h2 className="text-3xl font-black mb-6">
-              🔗 Contact & Links
-            </h2>
+            <h2 className="text-3xl font-black mb-6">🔗 Contact & Links</h2>
 
             <div className="grid md:grid-cols-2 gap-6">
               <input

@@ -1,557 +1,309 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
 
-type MentorProfile = {
-  id: string;
-  uid: string;
-  mentorName: string;
+type Mentor = {
+  id: number;
+  name: string;
   photo: string;
   designation: string;
-  organization: string;
-  bio: string;
-  experience: string;
-  skills: string[] | string;
+  company: string;
+  skills: string[];
   industries: string[];
-  email: string;
+  experience: string;
+  bio: string;
 };
 
-type MentorRequest = {
-  id: string;
-  mentorId: string;
-  startupId: string;
-  startupName: string;
-  startupDescription: string;
-  message: string;
-  area: string;
-  status: "pending" | "accepted" | "rejected";
-};
+export default function FindMentorsPage() {
+  const [mentors] = useState<Mentor[]>([
+    {
+      id: 1,
+      name: "Dr. Rajesh Kumar",
+      photo: "👨‍🏫",
+      designation: "AI Startup Mentor",
+      company: "AI Innovation Labs",
+      skills: ["AI", "Machine Learning", "Startup Strategy"],
+      industries: ["AI", "SaaS", "Tech"],
+      experience: "12 Years",
+      bio: "Helping early-stage startups build scalable AI products.",
+    },
+    {
+      id: 2,
+      name: "Sneha Rao",
+      photo: "👩‍💼",
+      designation: "Business Growth Mentor",
+      company: "GrowthX",
+      skills: ["Business", "Marketing", "Pitch Deck"],
+      industries: ["FinTech", "EdTech", "Business"],
+      experience: "9 Years",
+      bio: "Mentoring founders on business growth, funding and GTM.",
+    },
+  ]);
 
-type ChatMessage = {
-  id: string;
-  chatId: string;
-  sender: "startup" | "mentor";
-  text: string;
-  createdAt?: any;
-};
+  const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
 
-export default function MentorDiscoveryPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [mentors, setMentors] = useState<MentorProfile[]>([]);
-  const [requests, setRequests] = useState<MentorRequest[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
 
-  const [selectedMentor, setSelectedMentor] = useState<MentorProfile | null>(null);
-  const [requestMentor, setRequestMentor] = useState<MentorProfile | null>(null);
-  const [chatRequest, setChatRequest] = useState<MentorRequest | null>(null);
-
-  const [search, setSearch] = useState("");
-  const [aiDomain, setAiDomain] = useState("");
-  const [aiHelp, setAiHelp] = useState("");
-  const [aiStage, setAiStage] = useState("");
-  const [aiChallenge, setAiChallenge] = useState("");
-
-  const [requestForm, setRequestForm] = useState({
+  const [form, setForm] = useState({
     startupName: "",
-    startupDescription: "",
     message: "",
     area: "",
+    description: "",
   });
 
-  const [chatInput, setChatInput] = useState("");
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) {
-        window.location.href = "/login";
-        return;
-      }
-      setUser(currentUser);
-    });
-
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    const q = query(collection(db, "mentorProfiles"));
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...(item.data() as Omit<MentorProfile, "id">),
-      }));
-
-      setMentors(data);
-    });
-
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const q = query(
-      collection(db, "mentorRequests"),
-      where("startupId", "==", user.uid)
-    );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...(item.data() as Omit<MentorRequest, "id">),
-      }));
-
-      setRequests(data as MentorRequest[]);
-    });
-
-    return () => unsub();
-  }, [user]);
-
-  useEffect(() => {
-    if (!chatRequest || !user) {
-      setMessages([]);
-      return;
-    }
-
-    const chatId = `${chatRequest.mentorId}_${chatRequest.id}`;
-
-    const q = query(
-      collection(db, "mentorMessages"),
-      where("chatId", "==", chatId)
-    );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs
-        .map((item) => ({
-          id: item.id,
-          ...(item.data() as Omit<ChatMessage, "id">),
-        }))
-        .sort((a: any, b: any) => {
-          const aTime = a.createdAt?.seconds || 0;
-          const bTime = b.createdAt?.seconds || 0;
-          return aTime - bTime;
-        });
-
-      setMessages(data as ChatMessage[]);
-    });
-
-    return () => unsub();
-  }, [chatRequest, user]);
-
-  const getSkills = (mentor: MentorProfile) => {
-    if (Array.isArray(mentor.skills)) return mentor.skills;
-    return mentor.skills ? String(mentor.skills).split(",").map((s) => s.trim()) : [];
-  };
-
-  const filteredMentors = mentors.filter((mentor) => {
-    const text = `
-      ${mentor.mentorName}
-      ${mentor.designation}
-      ${mentor.organization}
-      ${mentor.bio}
-      ${getSkills(mentor).join(" ")}
-      ${mentor.industries?.join(" ")}
-    `.toLowerCase();
-
-    return text.includes(search.toLowerCase());
-  });
-
-  const getAiScore = (mentor: MentorProfile) => {
-    let score = 40;
-
-    const skills = getSkills(mentor).join(" ").toLowerCase();
-    const industries = (mentor.industries || []).join(" ").toLowerCase();
-
-    if (aiDomain && industries.includes(aiDomain.toLowerCase())) score += 25;
-    if (aiHelp && skills.includes(aiHelp.toLowerCase())) score += 25;
-    if (aiChallenge && mentor.bio?.toLowerCase().includes(aiChallenge.toLowerCase())) score += 10;
-    if (aiStage) score += 5;
-
-    return Math.min(score, 98);
-  };
-
-  const aiMatches = useMemo(() => {
-    if (!aiDomain && !aiHelp && !aiStage && !aiChallenge) return [];
-
-    return [...mentors]
-      .map((mentor) => ({
-        mentor,
-        score: getAiScore(mentor),
-      }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
-  }, [mentors, aiDomain, aiHelp, aiStage, aiChallenge]);
-
-  const sendRequest = async () => {
-    if (!user || !requestMentor) return;
-
+  const sendRequest = () => {
     if (
-      !requestForm.startupName ||
-      !requestForm.startupDescription ||
-      !requestForm.message ||
-      !requestForm.area
+      !selectedMentor ||
+      !form.startupName ||
+      !form.message ||
+      !form.area ||
+      !form.description
     ) {
       alert("Please fill all fields");
       return;
     }
 
-    await addDoc(collection(db, "mentorRequests"), {
-      mentorId: requestMentor.uid || requestMentor.id,
-      startupId: user.uid,
-      startupName: requestForm.startupName,
-      startupDescription: requestForm.startupDescription,
-      studentName: requestForm.startupName,
-      message: requestForm.message,
-      area: requestForm.area,
-      status: "pending",
-      createdAt: serverTimestamp(),
-    });
+    setRequests([
+      ...requests,
+      {
+        id: Date.now(),
+        mentorName: selectedMentor.name,
+        ...form,
+        status: "Pending",
+      },
+    ]);
 
     alert("Mentor request sent ✅");
 
-    setRequestMentor(null);
-    setRequestForm({
+    setSelectedMentor(null);
+
+    setForm({
       startupName: "",
-      startupDescription: "",
       message: "",
       area: "",
+      description: "",
     });
   };
-
-  const sendMessage = async () => {
-    if (!user || !chatRequest || !chatInput.trim()) return;
-
-    if (chatRequest.status !== "accepted") {
-      alert("Chat is enabled only after mentor accepts request");
-      return;
-    }
-
-    const chatId = `${chatRequest.mentorId}_${chatRequest.id}`;
-
-    await addDoc(collection(db, "mentorMessages"), {
-      chatId,
-      mentorId: chatRequest.mentorId,
-      requestId: chatRequest.id,
-      startupId: user.uid,
-      sender: "startup",
-      text: chatInput.trim(),
-      createdAt: serverTimestamp(),
-    });
-
-    setChatInput("");
-  };
-
-  const acceptedRequests = requests.filter((item) => item.status === "accepted");
 
   return (
-    <main className="min-h-screen bg-[#eef4ff] p-6 text-[#071739]">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-[30px] shadow-xl p-6 flex items-center justify-between">
+    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] px-6 py-10 relative overflow-hidden">
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.25),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.18),transparent_30%)]" />
+
+      <div className="relative z-10 max-w-7xl mx-auto">
+        <div className="rounded-full border border-white/70 bg-white/60 backdrop-blur-2xl shadow-2xl px-6 py-4 flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-4xl font-black">Mentor Discovery 👨‍🏫</h1>
-            <p className="text-slate-500 mt-2">
-              Find mentors, send requests and chat after acceptance.
+            <h1 className="text-2xl font-black">
+              Find Mentors 👨‍🏫
+            </h1>
+            <p className="text-slate-500">
+              Connect with expert mentors for startup guidance
             </p>
           </div>
 
           <Link href="/dashboard">
-            <button className="bg-[#071739] text-white px-6 py-3 rounded-2xl font-bold">
+            <button className="bg-[#07162b] text-white px-6 py-3 rounded-full font-bold">
               Back Dashboard
             </button>
           </Link>
         </div>
 
-        <section className="bg-white rounded-[30px] shadow-xl p-8 mt-8">
-          <h2 className="text-3xl font-black mb-6">🤖 Find Best Mentor Using AI</h2>
-
-          <div className="grid md:grid-cols-4 gap-4">
-            <input
-              placeholder="Startup domain"
-              value={aiDomain}
-              onChange={(e) => setAiDomain(e.target.value)}
-              className="input-box"
-            />
-
-            <input
-              placeholder="Help needed"
-              value={aiHelp}
-              onChange={(e) => setAiHelp(e.target.value)}
-              className="input-box"
-            />
-
-            <select
-              value={aiStage}
-              onChange={(e) => setAiStage(e.target.value)}
-              className="input-box"
+        <div className="grid lg:grid-cols-2 gap-8">
+          {mentors.map((mentor) => (
+            <div
+              key={mentor.id}
+              className="rounded-[36px] bg-white/80 border border-white p-8 shadow-xl hover:-translate-y-3 hover:shadow-[0_0_45px_rgba(59,130,246,0.25)] transition duration-300"
             >
-              <option value="">Stage</option>
-              <option>Idea</option>
-              <option>MVP</option>
-              <option>Growth</option>
-            </select>
+              <div className="flex items-start gap-5">
+                <div className="text-7xl">{mentor.photo}</div>
 
-            <input
-              placeholder="Key challenge"
-              value={aiChallenge}
-              onChange={(e) => setAiChallenge(e.target.value)}
-              className="input-box"
-            />
-          </div>
+                <div>
+                  <h2 className="text-4xl font-black">
+                    {mentor.name}
+                  </h2>
 
-          {aiMatches.length > 0 && (
-            <div className="grid md:grid-cols-3 gap-5 mt-8">
-              {aiMatches.map(({ mentor, score }) => (
-                <div key={mentor.id} className="bg-[#071739] text-white rounded-3xl p-6">
-                  <h3 className="text-2xl font-black">{mentor.mentorName}</h3>
-                  <p className="text-blue-100 mt-2">{mentor.designation}</p>
-                  <h2 className="text-5xl font-black text-cyan-300 mt-5">{score}%</h2>
-                  <p className="text-blue-100">AI Match Score</p>
+                  <p className="text-blue-600 font-bold mt-2">
+                    {mentor.designation}
+                  </p>
+
+                  <p className="text-slate-500 mt-1">
+                    {mentor.company}
+                  </p>
+
+                  <p className="text-green-600 font-black mt-2">
+                    {mentor.experience}
+                  </p>
                 </div>
-              ))}
+              </div>
+
+              <p className="text-slate-600 mt-6 leading-relaxed">
+                {mentor.bio}
+              </p>
+
+              <div className="flex flex-wrap gap-3 mt-6">
+                {mentor.skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-bold"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-4">
+                {mentor.industries.map((industry) => (
+                  <span
+                    key={industry}
+                    className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold"
+                  >
+                    {industry}
+                  </span>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setSelectedMentor(mentor)}
+                className="mt-8 w-full bg-[#07162b] text-white py-4 rounded-2xl font-black hover:bg-blue-700 transition"
+              >
+                Send Mentor Request
+              </button>
             </div>
-          )}
-        </section>
+          ))}
+        </div>
 
-        <section className="bg-white rounded-[30px] shadow-xl p-8 mt-8">
-          <h2 className="text-3xl font-black mb-6">🌐 Explore Mentors</h2>
+        <div className="rounded-[36px] bg-white/80 border border-white p-8 shadow-xl mt-10">
+          <h2 className="text-4xl font-black">
+            My Mentor Requests 📩
+          </h2>
 
-          <input
-            placeholder="Search mentors by skill, industry, company..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input-box mb-8"
-          />
+          <div className="space-y-5 mt-8">
+            {requests.length === 0 && (
+              <p className="text-slate-500">
+                No mentor requests sent yet.
+              </p>
+            )}
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            {filteredMentors.map((mentor) => (
-              <div key={mentor.id} className="bg-slate-50 rounded-3xl p-6 border">
-                <div className="flex gap-5">
-                  <div className="w-24 h-24 rounded-3xl bg-blue-100 overflow-hidden flex items-center justify-center text-4xl">
-                    {mentor.photo ? (
-                      <img src={mentor.photo} className="w-full h-full object-cover" />
-                    ) : (
-                      "👨‍🏫"
-                    )}
-                  </div>
+            {requests.map((request) => (
+              <div
+                key={request.id}
+                className="border rounded-[25px] p-6 flex justify-between items-center"
+              >
+                <div>
+                  <h3 className="text-2xl font-black">
+                    {request.mentorName}
+                  </h3>
 
-                  <div>
-                    <h3 className="text-3xl font-black">{mentor.mentorName}</h3>
-                    <p className="text-slate-500 mt-1">
-                      {mentor.designation} • {mentor.organization}
-                    </p>
-                    <p className="text-blue-600 font-bold mt-2">
-                      {mentor.experience} years experience
-                    </p>
-                  </div>
+                  <p className="text-slate-500 mt-2">
+                    {request.message}
+                  </p>
+
+                  <p className="text-blue-600 font-bold mt-2">
+                    Area: {request.area}
+                  </p>
                 </div>
 
-                <p className="text-slate-600 mt-5 leading-relaxed">
-                  {mentor.bio?.slice(0, 150)}...
-                </p>
-
-                <div className="flex flex-wrap gap-2 mt-5">
-                  {getSkills(mentor).slice(0, 5).map((skill) => (
-                    <span key={skill} className="bg-blue-100 text-blue-700 px-3 py-2 rounded-full text-sm font-bold">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => setSelectedMentor(mentor)}
-                    className="bg-white border px-5 py-3 rounded-xl font-bold"
-                  >
-                    View Full Profile
-                  </button>
-
-                  <button
-                    onClick={() => setRequestMentor(mentor)}
-                    className="bg-[#071739] text-white px-5 py-3 rounded-xl font-bold"
-                  >
-                    Send Request
-                  </button>
-                </div>
+                <span className="bg-yellow-100 text-yellow-700 px-5 py-2 rounded-full font-bold">
+                  {request.status}
+                </span>
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="bg-white rounded-[30px] shadow-xl p-8 mt-8 mb-10">
-          <h2 className="text-3xl font-black mb-6">💬 My Mentors</h2>
-
-          <div className="grid lg:grid-cols-2 gap-6">
-            <div>
-              {acceptedRequests.map((req) => (
-                <button
-                  key={req.id}
-                  onClick={() => setChatRequest(req)}
-                  className="w-full text-left bg-slate-50 border rounded-3xl p-5 mb-4"
-                >
-                  <h3 className="text-2xl font-black">Mentor Request Accepted</h3>
-                  <p className="text-slate-500 mt-1">Area: {req.area}</p>
-                  <p className="text-green-600 font-bold mt-2">Chat Enabled ✅</p>
-                </button>
-              ))}
-
-              {acceptedRequests.length === 0 && (
-                <p className="text-slate-500">No accepted mentors yet.</p>
-              )}
-            </div>
-
-            <div className="bg-slate-50 rounded-3xl p-5 border">
-              {chatRequest ? (
-                <>
-                  <h3 className="text-2xl font-black mb-4">Chat</h3>
-
-                  <div className="h-[300px] overflow-y-auto bg-white rounded-2xl p-4">
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`mb-3 flex ${
-                          msg.sender === "startup" ? "justify-end" : "justify-start"
-                        }`}
-                      >
-                        <div
-                          className={`px-4 py-3 rounded-2xl max-w-[280px] ${
-                            msg.sender === "startup"
-                              ? "bg-[#071739] text-white"
-                              : "bg-slate-100"
-                          }`}
-                        >
-                          {msg.text}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-3 mt-4">
-                    <input
-                      placeholder="Type message..."
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      className="input-box"
-                    />
-
-                    <button
-                      onClick={sendMessage}
-                      className="bg-blue-600 text-white px-6 rounded-2xl font-bold"
-                    >
-                      Send
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className="text-slate-500">Select accepted mentor request to chat.</p>
-              )}
-            </div>
-          </div>
-        </section>
+        </div>
       </div>
 
       {selectedMentor && (
-        <Modal onClose={() => setSelectedMentor(null)}>
-          <h2 className="text-4xl font-black mb-4">{selectedMentor.mentorName}</h2>
-          <p><b>Designation:</b> {selectedMentor.designation}</p>
-          <p><b>Company:</b> {selectedMentor.organization}</p>
-          <p><b>Experience:</b> {selectedMentor.experience}</p>
-          <p><b>Email:</b> {selectedMentor.email}</p>
-          <p className="mt-4"><b>Bio:</b> {selectedMentor.bio}</p>
-        </Modal>
-      )}
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6">
+          <div className="bg-white rounded-[35px] p-8 max-w-2xl w-full shadow-2xl">
+            <h2 className="text-4xl font-black">
+              Send Request to {selectedMentor.name}
+            </h2>
 
-      {requestMentor && (
-        <Modal onClose={() => setRequestMentor(null)}>
-          <h2 className="text-4xl font-black mb-4">Send Mentor Request</h2>
+            <div className="space-y-4 mt-8">
+              <input
+                placeholder="Startup Name"
+                className="input-box"
+                value={form.startupName}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    startupName: e.target.value,
+                  })
+                }
+              />
 
-          <input
-            placeholder="Startup Name"
-            value={requestForm.startupName}
-            onChange={(e) => setRequestForm({ ...requestForm, startupName: e.target.value })}
-            className="input-box mb-4"
-          />
+              <input
+                placeholder="Area of Help"
+                className="input-box"
+                value={form.area}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    area: e.target.value,
+                  })
+                }
+              />
 
-          <textarea
-            placeholder="Startup Description"
-            value={requestForm.startupDescription}
-            onChange={(e) => setRequestForm({ ...requestForm, startupDescription: e.target.value })}
-            className="input-box h-28 mb-4"
-          />
+              <textarea
+                placeholder="Startup Description"
+                className="input-box h-28"
+                value={form.description}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    description: e.target.value,
+                  })
+                }
+              />
 
-          <input
-            placeholder="Area of Help"
-            value={requestForm.area}
-            onChange={(e) => setRequestForm({ ...requestForm, area: e.target.value })}
-            className="input-box mb-4"
-          />
+              <textarea
+                placeholder="Message to Mentor"
+                className="input-box h-28"
+                value={form.message}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    message: e.target.value,
+                  })
+                }
+              />
+            </div>
 
-          <textarea
-            placeholder="Message to mentor"
-            value={requestForm.message}
-            onChange={(e) => setRequestForm({ ...requestForm, message: e.target.value })}
-            className="input-box h-28 mb-4"
-          />
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={sendRequest}
+                className="flex-1 bg-[#07162b] text-white py-4 rounded-2xl font-black"
+              >
+                Send Request
+              </button>
 
-          <button
-            onClick={sendRequest}
-            className="w-full bg-[#071739] text-white py-4 rounded-2xl font-black"
-          >
-            Send Request
-          </button>
-        </Modal>
+              <button
+                onClick={() => setSelectedMentor(null)}
+                className="flex-1 bg-red-500 text-white py-4 rounded-2xl font-black"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <style jsx global>{`
         .input-box {
           width: 100%;
           border: 1px solid #dbe4f0;
-          border-radius: 16px;
-          padding: 14px 18px;
+          background: #f8fbff;
+          padding: 16px 18px;
+          border-radius: 18px;
           outline: none;
-          background: white;
         }
 
         .input-box:focus {
           border-color: #2563eb;
+          background: white;
           box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
       `}</style>
     </main>
-  );
-}
-
-function Modal({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-[30px] p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="float-right bg-red-100 text-red-600 px-4 py-2 rounded-full font-bold"
-        >
-          ✕
-        </button>
-
-        {children}
-      </div>
-    </div>
   );
 }

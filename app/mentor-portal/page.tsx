@@ -1,41 +1,10 @@
-// app/mentor-portal/page.tsx
-
 "use client";
 
 import Link from "next/link";
-
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
-import {
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
-
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from "firebase/firestore";
-
-import {
-  auth,
-  db,
-} from "@/lib/firebase";
+import { useEffect, useMemo, useState } from "react";
 
 type Availability = {
   id: string;
-  mentorId: string;
   day: string;
   start: string;
   end: string;
@@ -43,14 +12,10 @@ type Availability = {
 
 type MentorRequest = {
   id: string;
-  mentorId: string;
   studentName: string;
   message: string;
   area: string;
-  status:
-    | "pending"
-    | "accepted"
-    | "rejected";
+  status: "pending" | "accepted" | "rejected";
 };
 
 type Message = {
@@ -61,48 +26,54 @@ type Message = {
 
 type Follower = {
   id: string;
-  mentorId: string;
   name: string;
   query: string;
 };
 
 export default function MentorPortalPage() {
-  const [user, setUser] =
-    useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const [mentorProfile, setMentorProfile] =
     useState<any>(null);
 
-  const [loading, setLoading] =
-    useState(true);
-
-  // -----------------------------
-  // AVAILABILITY
-  // -----------------------------
   const [availability, setAvailability] =
     useState<Availability[]>([]);
 
-  const [day, setDay] =
+  const [requests, setRequests] =
+    useState<MentorRequest[]>([
+      {
+        id: "1",
+        studentName: "Rahul",
+        message: "Need startup guidance",
+        area: "AI Startup",
+        status: "pending",
+      },
+    ]);
+
+  const [followers, setFollowers] =
+    useState<Follower[]>([
+      {
+        id: "1",
+        name: "Aman",
+        query: "Need help with pitch deck",
+      },
+    ]);
+
+  const [messages, setMessages] =
+    useState<Message[]>([]);
+
+  const [selectedRequest, setSelectedRequest] =
+    useState<MentorRequest | null>(null);
+
+  const [chatInput, setChatInput] =
     useState("");
 
-  const [start, setStart] =
-    useState("");
-
-  const [end, setEnd] =
-    useState("");
+  const [day, setDay] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
 
   const [editingSlotId, setEditingSlotId] =
-    useState<string | null>(
-      null
-    );
-
-  // -----------------------------
-  // REQUESTS
-  // -----------------------------
-  const [requests, setRequests] =
-    useState<MentorRequest[]>(
-      []
-    );
+    useState<string | null>(null);
 
   const [filter, setFilter] =
     useState<
@@ -112,36 +83,39 @@ export default function MentorPortalPage() {
       | "rejected"
     >("all");
 
-  // -----------------------------
-  // CHAT
-  // -----------------------------
-  const [selectedRequest, setSelectedRequest] =
-    useState<MentorRequest | null>(
-      null
-    );
-
-  const [chatInput, setChatInput] =
-    useState("");
-
-  const [messages, setMessages] =
-    useState<Message[]>([]);
-
-  // -----------------------------
-  // FOLLOWERS
-  // -----------------------------
-  const [followers, setFollowers] =
-    useState<Follower[]>(
-      []
-    );
-
-  // -----------------------------
-  // NOTIFICATIONS
-  // -----------------------------
   const [notifications, setNotifications] =
-    useState<string[]>(
-      []
-    );
+    useState<string[]>([]);
 
+  // ------------------------
+  // LOGIN CHECK
+  // ------------------------
+  useEffect(() => {
+    const mentorLoggedIn =
+      localStorage.getItem(
+        "mentorLoggedIn"
+      );
+
+    if (
+      mentorLoggedIn !== "true"
+    ) {
+      window.location.href =
+        "/mentor-login";
+
+      return;
+    }
+
+    setMentorProfile({
+      mentorName:
+        "Demo Mentor",
+      profilePhoto: "",
+    });
+
+    setLoading(false);
+  }, []);
+
+  // ------------------------
+  // NOTIFICATION
+  // ------------------------
   const notify = (
     message: string
   ) => {
@@ -163,252 +137,9 @@ export default function MentorPortalPage() {
     }, 3000);
   };
 
-  // -----------------------------
-  // AUTH CHECK
-  // -----------------------------
-  useEffect(() => {
-    const unsubscribe =
-      onAuthStateChanged(
-        auth,
-        async (
-          currentUser
-        ) => {
-          if (
-            !currentUser
-          ) {
-            window.location.href =
-              "/mentor-dashboard";
-
-            return;
-          }
-
-          setUser(
-            currentUser
-          );
-
-          const mentorRef =
-            doc(
-              db,
-              "mentorProfiles",
-              currentUser.uid
-            );
-
-          const mentorSnap =
-            await getDoc(
-              mentorRef
-            );
-
-          if (
-            !mentorSnap.exists()
-          ) {
-            window.location.href =
-              "/mentor-onboarding";
-
-            return;
-          }
-
-          setMentorProfile(
-            mentorSnap.data()
-          );
-
-          setLoading(
-            false
-          );
-        }
-      );
-
-    return () =>
-      unsubscribe();
-  }, []);
-
-  // -----------------------------
-  // FETCH AVAILABILITY
-  // -----------------------------
-  useEffect(() => {
-    if (!user) return;
-
-    const q = query(
-      collection(
-        db,
-        "mentorAvailability"
-      ),
-      where(
-        "mentorId",
-        "==",
-        user.uid
-      )
-    );
-
-    const unsubscribe =
-      onSnapshot(
-        q,
-        (
-          snapshot
-        ) => {
-          const data =
-            snapshot.docs.map(
-              (
-                doc
-              ) => ({
-                id: doc.id,
-                ...(doc.data() as any),
-              })
-            );
-
-          setAvailability(
-            data
-          );
-        }
-      );
-
-    return () =>
-      unsubscribe();
-  }, [user]);
-
-  // -----------------------------
-  // FETCH REQUESTS
-  // -----------------------------
-  useEffect(() => {
-    if (!user) return;
-
-    const q = query(
-      collection(
-        db,
-        "mentorRequests"
-      ),
-      where(
-        "mentorId",
-        "==",
-        user.uid
-      )
-    );
-
-    const unsubscribe =
-      onSnapshot(
-        q,
-        (
-          snapshot
-        ) => {
-          const data =
-            snapshot.docs.map(
-              (
-                doc
-              ) => ({
-                id: doc.id,
-                ...(doc.data() as any),
-              })
-            );
-
-          setRequests(
-            data
-          );
-        }
-      );
-
-    return () =>
-      unsubscribe();
-  }, [user]);
-
-  // -----------------------------
-  // FETCH FOLLOWERS
-  // -----------------------------
-  useEffect(() => {
-    if (!user) return;
-
-    const q = query(
-      collection(
-        db,
-        "mentorFollowers"
-      ),
-      where(
-        "mentorId",
-        "==",
-        user.uid
-      )
-    );
-
-    const unsubscribe =
-      onSnapshot(
-        q,
-        (
-          snapshot
-        ) => {
-          const data =
-            snapshot.docs.map(
-              (
-                doc
-              ) => ({
-                id: doc.id,
-                ...(doc.data() as any),
-              })
-            );
-
-          setFollowers(
-            data
-          );
-        }
-      );
-
-    return () =>
-      unsubscribe();
-  }, [user]);
-
-  // -----------------------------
-  // FETCH MESSAGES
-  // -----------------------------
-  useEffect(() => {
-    if (
-      !selectedRequest ||
-      !user
-    )
-      return;
-
-    const chatId = `${user.uid}_${selectedRequest.id}`;
-
-    const q = query(
-      collection(
-        db,
-        "mentorMessages"
-      ),
-      where(
-        "chatId",
-        "==",
-        chatId
-      )
-    );
-
-    const unsubscribe =
-      onSnapshot(
-        q,
-        (
-          snapshot
-        ) => {
-          const data =
-            snapshot.docs.map(
-              (
-                doc
-              ) => ({
-                id: doc.id,
-                ...(doc.data() as any),
-              })
-            );
-
-          setMessages(
-            data
-          );
-        }
-      );
-
-    return () =>
-      unsubscribe();
-  }, [
-    selectedRequest,
-    user,
-  ]);
-
-  // -----------------------------
-  // FILTERED REQUESTS
-  // -----------------------------
+  // ------------------------
+  // FILTER
+  // ------------------------
   const filteredRequests =
     useMemo(() => {
       if (
@@ -429,18 +160,18 @@ export default function MentorPortalPage() {
       filter,
     ]);
 
-  // -----------------------------
-  // ADD / UPDATE AVAILABILITY
-  // -----------------------------
+  // ------------------------
+  // SAVE SLOT
+  // ------------------------
   const saveAvailability =
-    async () => {
+    () => {
       if (
         !day ||
         !start ||
         !end
       ) {
         alert(
-          "Please fill all fields"
+          "Fill all fields"
         );
 
         return;
@@ -449,17 +180,24 @@ export default function MentorPortalPage() {
       if (
         editingSlotId
       ) {
-        await updateDoc(
-          doc(
-            db,
-            "mentorAvailability",
-            editingSlotId
-          ),
-          {
-            day,
-            start,
-            end,
-          }
+        setAvailability(
+          (
+            prev
+          ) =>
+            prev.map(
+              (
+                slot
+              ) =>
+                slot.id ===
+                editingSlotId
+                  ? {
+                      ...slot,
+                      day,
+                      start,
+                      end,
+                    }
+                  : slot
+            )
         );
 
         notify(
@@ -470,20 +208,18 @@ export default function MentorPortalPage() {
           null
         );
       } else {
-        await addDoc(
-          collection(
-            db,
-            "mentorAvailability"
-          ),
-          {
-            mentorId:
-              user.uid,
-            day,
-            start,
-            end,
-            createdAt:
-              serverTimestamp(),
-          }
+        setAvailability(
+          (
+            prev
+          ) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              day,
+              start,
+              end,
+            },
+          ]
         );
 
         notify(
@@ -496,9 +232,9 @@ export default function MentorPortalPage() {
       setEnd("");
     };
 
-  // -----------------------------
+  // ------------------------
   // EDIT SLOT
-  // -----------------------------
+  // ------------------------
   const editSlot = (
     slot: Availability
   ) => {
@@ -507,124 +243,111 @@ export default function MentorPortalPage() {
     );
 
     setDay(slot.day);
-
-    setStart(
-      slot.start
-    );
-
+    setStart(slot.start);
     setEnd(slot.end);
   };
 
-  // -----------------------------
+  // ------------------------
   // DELETE SLOT
-  // -----------------------------
-  const deleteSlot =
-    async (
-      id: string
-    ) => {
-      await deleteDoc(
-        doc(
-          db,
-          "mentorAvailability",
-          id
+  // ------------------------
+  const deleteSlot = (
+    id: string
+  ) => {
+    setAvailability(
+      (prev) =>
+        prev.filter(
+          (
+            slot
+          ) =>
+            slot.id !==
+            id
         )
-      );
+    );
 
-      notify(
-        "Availability deleted"
-      );
-    };
+    notify(
+      "Availability deleted"
+    );
+  };
 
-  // -----------------------------
-  // REQUEST ACTIONS
-  // -----------------------------
+  // ------------------------
+  // REQUEST ACTION
+  // ------------------------
   const updateRequestStatus =
-    async (
+    (
       request: MentorRequest,
       status:
         | "accepted"
         | "rejected"
     ) => {
-      await updateDoc(
-        doc(
-          db,
-          "mentorRequests",
-          request.id
-        ),
-        {
-          status,
-        }
+      setRequests(
+        (
+          prev
+        ) =>
+          prev.map(
+            (
+              item
+            ) =>
+              item.id ===
+              request.id
+                ? {
+                    ...item,
+                    status,
+                  }
+                : item
+          )
       );
 
       notify(
         `Request ${status}`
       );
-
-      if (
-        status ===
-        "accepted"
-      ) {
-        setSelectedRequest(
-          {
-            ...request,
-            status,
-          }
-        );
-      }
     };
 
-  // -----------------------------
+  // ------------------------
   // SEND MESSAGE
-  // -----------------------------
+  // ------------------------
   const sendMessage =
-    async () => {
+    () => {
       if (
-        !chatInput ||
-        !selectedRequest
+        !chatInput
       )
         return;
 
-      const chatId = `${user.uid}_${selectedRequest.id}`;
-
-      await addDoc(
-        collection(
-          db,
-          "mentorMessages"
-        ),
-        {
-          chatId,
-          sender:
-            "mentor",
-          text: chatInput,
-          createdAt:
-            serverTimestamp(),
-        }
+      setMessages(
+        (
+          prev
+        ) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender:
+              "mentor",
+            text: chatInput,
+          },
+        ]
       );
 
-      setChatInput(
-        ""
-      );
+      setChatInput("");
 
       notify(
         "Message sent"
       );
     };
 
-  // -----------------------------
+  // ------------------------
   // LOGOUT
-  // -----------------------------
-  const logout =
-    async () => {
-      await signOut(
-        auth
-      );
+  // ------------------------
+  const logout = () => {
+    localStorage.removeItem(
+      "mentorLoggedIn"
+    );
 
-      localStorage.clear();
+    window.location.href =
+      "/mentor-login";
+  };
 
-      window.location.href =
-        "/mentor-dashboard";
-    };
-
+  // ------------------------
+  // LOADING
+  // ------------------------
   if (
     loading
   ) {
@@ -639,7 +362,8 @@ export default function MentorPortalPage() {
 
   return (
     <main className="min-h-screen bg-[#eef4ff] p-6">
-      {/* NOTIFICATIONS */}
+      
+      {/* Notifications */}
       <div className="fixed top-6 right-6 z-50 space-y-3">
         {notifications.map(
           (
@@ -659,20 +383,14 @@ export default function MentorPortalPage() {
       </div>
 
       <div className="max-w-7xl mx-auto">
+
         {/* TOP */}
         <div className="bg-white rounded-[30px] shadow-xl p-6 flex items-center justify-between">
+          
           <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center text-3xl overflow-hidden">
-              {mentorProfile?.profilePhoto ? (
-                <img
-                  src={
-                    mentorProfile.profilePhoto
-                  }
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                "👨‍🏫"
-              )}
+            
+            <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center text-3xl">
+              👨‍🏫
             </div>
 
             <div>
@@ -690,6 +408,7 @@ export default function MentorPortalPage() {
           </div>
 
           <div className="flex gap-4">
+            
             <Link
               href="/mentor-profile"
               className="bg-slate-100 px-6 py-3 rounded-2xl font-bold"
@@ -710,6 +429,7 @@ export default function MentorPortalPage() {
 
         {/* STATS */}
         <div className="grid md:grid-cols-4 gap-6 mt-8">
+          
           <StatCard
             title="Availability"
             value={
@@ -741,11 +461,13 @@ export default function MentorPortalPage() {
 
         {/* AVAILABILITY */}
         <div className="bg-white rounded-[30px] shadow-xl p-8 mt-8">
+          
           <h2 className="text-3xl font-black mb-6">
             Availability
           </h2>
 
           <div className="grid md:grid-cols-4 gap-4">
+            
             <input
               placeholder="Day"
               value={day}
@@ -778,9 +500,7 @@ export default function MentorPortalPage() {
 
             <input
               type="time"
-              value={
-                end
-              }
+              value={end}
               onChange={(
                 e
               ) =>
@@ -832,6 +552,7 @@ export default function MentorPortalPage() {
                   </p>
 
                   <div className="flex gap-3 mt-5">
+                    
                     <button
                       onClick={() =>
                         editSlot(
@@ -854,257 +575,6 @@ export default function MentorPortalPage() {
                       Delete
                     </button>
                   </div>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-
-        {/* REQUESTS */}
-        <div className="bg-white rounded-[30px] shadow-xl p-8 mt-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-black">
-              Mentorship
-              Requests
-            </h2>
-
-            <select
-              value={
-                filter
-              }
-              onChange={(
-                e
-              ) =>
-                setFilter(
-                  e.target
-                    .value as any
-                )
-              }
-              className="input-box max-w-[220px]"
-            >
-              <option value="all">
-                All
-              </option>
-
-              <option value="pending">
-                Pending
-              </option>
-
-              <option value="accepted">
-                Accepted
-              </option>
-
-              <option value="rejected">
-                Rejected
-              </option>
-            </select>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-5 mt-8">
-            {filteredRequests.map(
-              (
-                request
-              ) => (
-                <div
-                  key={
-                    request.id
-                  }
-                  className="border rounded-3xl p-6 bg-slate-50"
-                >
-                  <h3 className="text-2xl font-bold">
-                    {
-                      request.studentName
-                    }
-                  </h3>
-
-                  <p className="text-slate-600 mt-3">
-                    {
-                      request.message
-                    }
-                  </p>
-
-                  <p className="mt-3 text-blue-600 font-semibold">
-                    Area:{" "}
-                    {
-                      request.area
-                    }
-                  </p>
-
-                  <div className="mt-5">
-                    <span
-                      className={`px-4 py-2 rounded-full text-sm font-bold ${
-                        request.status ===
-                        "accepted"
-                          ? "bg-green-100 text-green-700"
-                          : request.status ===
-                            "rejected"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {
-                        request.status
-                      }
-                    </span>
-                  </div>
-
-                  {request.status ===
-                    "pending" && (
-                    <div className="flex gap-3 mt-5">
-                      <button
-                        onClick={() =>
-                          updateRequestStatus(
-                            request,
-                            "accepted"
-                          )
-                        }
-                        className="bg-green-500 text-white px-5 py-3 rounded-xl"
-                      >
-                        Accept
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          updateRequestStatus(
-                            request,
-                            "rejected"
-                          )
-                        }
-                        className="bg-red-500 text-white px-5 py-3 rounded-xl"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
-
-                  {request.status ===
-                    "accepted" && (
-                    <button
-                      onClick={() =>
-                        setSelectedRequest(
-                          request
-                        )
-                      }
-                      className="mt-5 bg-[#071739] text-white px-5 py-3 rounded-xl"
-                    >
-                      Open Chat
-                    </button>
-                  )}
-                </div>
-              )
-            )}
-          </div>
-        </div>
-
-        {/* CHAT */}
-        <div className="bg-white rounded-[30px] shadow-xl p-8 mt-8">
-          <h2 className="text-3xl font-black mb-6">
-            Communication
-          </h2>
-
-          {selectedRequest ? (
-            <>
-              <div className="border rounded-3xl h-[350px] overflow-y-auto p-5 bg-slate-50">
-                {messages.map(
-                  (
-                    msg
-                  ) => (
-                    <div
-                      key={
-                        msg.id
-                      }
-                      className={`mb-4 flex ${
-                        msg.sender ===
-                        "mentor"
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`px-5 py-3 rounded-2xl max-w-[300px] ${
-                          msg.sender ===
-                          "mentor"
-                            ? "bg-[#071739] text-white"
-                            : "bg-white shadow"
-                        }`}
-                      >
-                        {
-                          msg.text
-                        }
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-
-              <div className="flex gap-4 mt-5">
-                <input
-                  value={
-                    chatInput
-                  }
-                  onChange={(
-                    e
-                  ) =>
-                    setChatInput(
-                      e.target
-                        .value
-                    )
-                  }
-                  placeholder="Type message..."
-                  className="input-box flex-1"
-                />
-
-                <button
-                  onClick={
-                    sendMessage
-                  }
-                  className="bg-[#071739] text-white px-8 rounded-2xl font-bold"
-                >
-                  Send
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="text-slate-500">
-              Select a
-              request to
-              start chat
-            </p>
-          )}
-        </div>
-
-        {/* FOLLOWERS */}
-        <div className="bg-white rounded-[30px] shadow-xl p-8 mt-8 mb-10">
-          <h2 className="text-3xl font-black mb-6">
-            Followers
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-5">
-            {followers.map(
-              (
-                follower
-              ) => (
-                <div
-                  key={
-                    follower.id
-                  }
-                  className="border rounded-3xl p-6 bg-slate-50"
-                >
-                  <h3 className="text-2xl font-bold">
-                    {
-                      follower.name
-                    }
-                  </h3>
-
-                  <p className="text-slate-600 mt-3">
-                    {
-                      follower.query
-                    }
-                  </p>
-
-                  <button className="mt-5 bg-[#071739] text-white px-5 py-3 rounded-xl">
-                    Respond
-                  </button>
                 </div>
               )
             )}
