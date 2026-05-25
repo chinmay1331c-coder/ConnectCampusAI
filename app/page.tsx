@@ -1,6 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
+
+const fadeUp = {
+  hidden: {
+    opacity: 0,
+    y: 80,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.8,
+    },
+  },
+};
 
 export default function HomePage() {
   return (
@@ -27,7 +42,6 @@ export default function HomePage() {
 
       {/* NAVBAR */}
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-7xl rounded-full border border-white/70 bg-white/45 backdrop-blur-2xl shadow-2xl px-6 py-4 flex items-center justify-between">
-        {/* LOGO */}
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-white/80 border border-white rounded-2xl p-2 shadow-lg">
             <img
@@ -49,7 +63,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* LINKS */}
         <div className="hidden md:flex items-center gap-8 font-semibold text-slate-700">
           <a href="#features">Features</a>
           <a href="#about">About Us</a>
@@ -57,7 +70,6 @@ export default function HomePage() {
           <a href="#contact">Contact</a>
         </div>
 
-        {/* BUTTONS */}
         <div className="flex items-center gap-4">
           <Link href="/login">
             <button className="bg-white/70 border border-white px-6 py-3 rounded-full font-semibold shadow-lg hover:-translate-y-1 transition">
@@ -74,9 +86,14 @@ export default function HomePage() {
       </nav>
 
       {/* HERO */}
-      <section className="relative z-10 max-w-7xl mx-auto px-8 pt-48 pb-24">
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeUp}
+        className="relative z-10 max-w-7xl mx-auto px-8 pt-48 pb-24"
+      >
         <div className="grid lg:grid-cols-2 gap-16 items-center">
-          {/* LEFT */}
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-3 rounded-full border border-white/70 bg-white/60 px-5 py-3 shadow-xl mb-8">
               <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
@@ -113,7 +130,6 @@ export default function HomePage() {
               </a>
             </div>
 
-            {/* STATS */}
             <div className="grid grid-cols-3 gap-5 mt-14">
               {[
                 ["10K+", "Students"],
@@ -125,7 +141,6 @@ export default function HomePage() {
                   className="rounded-[28px] bg-white/65 border border-white/70 p-6 shadow-xl backdrop-blur-xl"
                 >
                   <h2 className="text-3xl font-black">{number}</h2>
-
                   <p className="text-slate-600 mt-2">{label}</p>
                 </div>
               ))}
@@ -134,15 +149,12 @@ export default function HomePage() {
 
           {/* RIGHT SIDE */}
           <div className="relative h-[650px] hidden lg:flex items-center justify-center">
-            {/* BIG GLOW */}
             <div className="absolute w-[600px] h-[600px] rounded-full bg-blue-400/20 blur-3xl animate-pulse" />
 
-            {/* ORBIT RINGS */}
             <div className="absolute w-[520px] h-[520px] border border-blue-200/40 rounded-full animate-spin [animation-duration:25s]" />
 
             <div className="absolute w-[380px] h-[380px] border border-cyan-200/40 rounded-full animate-spin [animation-duration:18s] [animation-direction:reverse]" />
 
-            {/* MAIN CARD */}
             <div className="absolute z-20 w-[340px] rounded-[42px] bg-white/70 border border-white/80 backdrop-blur-3xl p-8 shadow-[0_35px_80px_rgba(59,130,246,0.25)] hover:scale-105 transition duration-500 animate-float">
               <div className="flex items-center gap-5 mb-6">
                 <div className="w-20 h-20 rounded-[28px] bg-blue-100 flex items-center justify-center text-5xl shadow-lg">
@@ -165,7 +177,6 @@ export default function HomePage() {
               <div className="grid grid-cols-2 gap-4 mt-8">
                 <div className="bg-blue-50 rounded-[22px] p-5 shadow">
                   <h3 className="font-black text-3xl">120+</h3>
-
                   <p className="text-sm text-slate-600 mt-1">
                     Active Startups
                   </p>
@@ -173,7 +184,6 @@ export default function HomePage() {
 
                 <div className="bg-cyan-50 rounded-[22px] p-5 shadow">
                   <h3 className="font-black text-3xl">85%</h3>
-
                   <p className="text-sm text-slate-600 mt-1">
                     Match Accuracy
                   </p>
@@ -181,33 +191,24 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* INVESTOR CARD */}
             <div className="absolute top-10 right-0 z-30 w-[240px] rounded-[36px] bg-white/70 border border-white/80 backdrop-blur-3xl p-6 shadow-2xl animate-[float_5s_ease-in-out_infinite]">
               <div className="text-5xl mb-4">💰</div>
-
               <h2 className="text-3xl font-black">Investors</h2>
-
               <p className="text-slate-600 mt-3 leading-relaxed">
                 Connect with VCs & Angel Investors
               </p>
             </div>
 
-            {/* MENTOR CARD */}
             <div className="absolute bottom-10 left-10 z-30 w-[250px] rounded-[36px] bg-white/70 border border-white/80 backdrop-blur-3xl p-6 shadow-2xl animate-[float_6s_ease-in-out_infinite]">
               <div className="text-5xl mb-4">🧑‍🏫</div>
-
               <h2 className="text-3xl font-black">Mentors</h2>
-
               <p className="text-slate-600 mt-3">
                 Get guidance from experts
               </p>
             </div>
 
-            {/* AI CARD */}
             <div className="absolute bottom-16 right-8 z-40 w-[290px] rounded-[38px] bg-gradient-to-br from-[#07162b] to-blue-700 text-white p-8 shadow-[0_35px_90px_rgba(15,23,42,0.45)] animate-[float_4s_ease-in-out_infinite]">
-              <h2 className="text-5xl font-black mb-5">
-                AI Matching
-              </h2>
+              <h2 className="text-5xl font-black mb-5">AI Matching</h2>
 
               <p className="text-blue-100 leading-relaxed text-lg">
                 Smart teammate & investor recommendations powered by AI.
@@ -224,19 +225,20 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* PARTICLES */}
             <div className="absolute top-24 left-16 w-4 h-4 bg-blue-400 rounded-full animate-ping" />
-
             <div className="absolute bottom-24 right-32 w-3 h-3 bg-cyan-400 rounded-full animate-pulse" />
-
             <div className="absolute top-1/2 left-0 w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* FEATURES */}
-      <section
+      <motion.section
         id="features"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeUp}
         className="relative z-10 max-w-7xl mx-auto px-8 py-20"
       >
         <div className="rounded-[48px] bg-white/60 border border-white/80 shadow-2xl p-10">
@@ -256,19 +258,21 @@ export default function HomePage() {
                 className="rounded-[32px] bg-white/75 border border-white p-7 shadow-xl hover:-translate-y-2 transition"
               >
                 <div className="text-5xl mb-5">{icon}</div>
-
                 <h3 className="text-2xl font-black">{title}</h3>
-
                 <p className="text-slate-600 mt-3">{desc}</p>
               </div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ABOUT */}
-      <section
+      <motion.section
         id="about"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeUp}
         className="relative z-10 max-w-7xl mx-auto px-8 py-20"
       >
         <div className="grid lg:grid-cols-2 gap-8">
@@ -291,20 +295,21 @@ export default function HomePage() {
 
             <div className="space-y-5 text-lg text-slate-600">
               <p>✅ Create profile once and reuse everywhere</p>
-
               <p>✅ Discover students, founders, mentors and investors</p>
-
               <p>✅ Build teams and collaborate on startup projects</p>
-
               <p>✅ Manage your posts, requests and courses</p>
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* OVERVIEW */}
-      <section
+      <motion.section
         id="overview"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeUp}
         className="relative z-10 max-w-7xl mx-auto px-8 py-20"
       >
         <div className="rounded-[48px] bg-white/70 border border-white/80 p-12 shadow-2xl">
@@ -337,11 +342,15 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* CONTACT */}
-      <section
+      <motion.section
         id="contact"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeUp}
         className="relative z-10 max-w-7xl mx-auto px-8 py-20 pb-32"
       >
         <div className="rounded-[48px] bg-[#07162b] text-white p-12 shadow-2xl text-center">
@@ -359,7 +368,7 @@ export default function HomePage() {
             </button>
           </Link>
         </div>
-      </section>
+      </motion.section>
     </main>
   );
 }
