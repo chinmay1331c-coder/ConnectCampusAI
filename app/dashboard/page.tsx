@@ -1,3 +1,5 @@
+// app/dashboard/page.tsx
+
 "use client";
 
 import Link from "next/link";
@@ -21,6 +23,12 @@ export default function DashboardPage() {
       title: "Find Mentors",
       desc: "Explore mentors, send requests and chat after approval",
       link: "/features/mentors",
+    },
+    {
+      icon: "🛠️",
+      title: "Services",
+      desc: "Find service providers for AI, web, design, cloud and startup work",
+      link: "/features/services",
     },
     {
       icon: "💰",
@@ -103,7 +111,8 @@ export default function DashboardPage() {
 
               <p className="text-xl text-slate-600 leading-relaxed mt-8 max-w-2xl">
                 Build startup ideas, find teammates, connect with investors,
-                discover mentors and collaborate using AI-powered networking.
+                discover mentors, hire service providers and collaborate using
+                AI-powered networking.
               </p>
             </div>
 
@@ -116,8 +125,8 @@ export default function DashboardPage() {
                 </h2>
 
                 <p className="text-blue-100 text-lg leading-relaxed mt-5">
-                  Manage posts, collaboration requests, courses and startup
-                  activities from one place.
+                  Manage posts, collaboration requests, service requests,
+                  courses and startup activities from one place.
                 </p>
               </div>
             </Link>

@@ -1,4 +1,4 @@
-// app/service-provider-login/page.tsx
+// app/mentor-login/page.tsx
 
 "use client";
 
@@ -16,7 +16,7 @@ import {
   googleProvider,
 } from "@/lib/firebase";
 
-export default function ServiceProviderLoginPage() {
+export default function MentorLoginPage() {
   const router = useRouter();
 
   const [isSignup, setIsSignup] =
@@ -49,15 +49,13 @@ export default function ServiceProviderLoginPage() {
         const user =
           result.user;
 
-        // SAVE LOGIN
-
         localStorage.setItem(
-          "serviceProviderLoggedIn",
+          "mentorLoggedIn",
           "true"
         );
 
         localStorage.setItem(
-          "serviceProviderUser",
+          "mentorUser",
           JSON.stringify({
             uid: user.uid,
             name:
@@ -69,25 +67,21 @@ export default function ServiceProviderLoginPage() {
           })
         );
 
-        // CHECK PROFILE
-
         const completed =
           localStorage.getItem(
-            "serviceProviderProfileCompleted"
+            "mentorProfileCompleted"
           );
-
-        // REDIRECT
 
         if (
           completed ===
           "true"
         ) {
           router.push(
-            "/service-provider-dashboard"
+            "/mentor-portal"
           );
         } else {
           router.push(
-            "/service-provider-profile"
+            "/mentor-onboarding"
           );
         }
       } catch (error) {
@@ -102,7 +96,7 @@ export default function ServiceProviderLoginPage() {
     };
 
   // =========================
-  // EMAIL LOGIN / SIGNUP
+  // EMAIL LOGIN
   // =========================
 
   const handleEmailAuth =
@@ -112,7 +106,7 @@ export default function ServiceProviderLoginPage() {
         !password
       ) {
         alert(
-          "Please fill all fields"
+          "Fill all fields"
         );
 
         return;
@@ -123,8 +117,6 @@ export default function ServiceProviderLoginPage() {
 
         let userCredential;
 
-        // SIGNUP
-
         if (isSignup) {
           userCredential =
             await createUserWithEmailAndPassword(
@@ -132,11 +124,7 @@ export default function ServiceProviderLoginPage() {
               email,
               password
             );
-        }
-
-        // LOGIN
-
-        else {
+        } else {
           userCredential =
             await signInWithEmailAndPassword(
               auth,
@@ -148,15 +136,13 @@ export default function ServiceProviderLoginPage() {
         const user =
           userCredential.user;
 
-        // SAVE LOGIN
-
         localStorage.setItem(
-          "serviceProviderLoggedIn",
+          "mentorLoggedIn",
           "true"
         );
 
         localStorage.setItem(
-          "serviceProviderUser",
+          "mentorUser",
           JSON.stringify({
             uid: user.uid,
             email:
@@ -164,25 +150,21 @@ export default function ServiceProviderLoginPage() {
           })
         );
 
-        // CHECK PROFILE
-
         const completed =
           localStorage.getItem(
-            "serviceProviderProfileCompleted"
+            "mentorProfileCompleted"
           );
-
-        // REDIRECT
 
         if (
           completed ===
           "true"
         ) {
           router.push(
-            "/service-provider-dashboard"
+            "/mentor-portal"
           );
         } else {
           router.push(
-            "/service-provider-profile"
+            "/mentor-onboarding"
           );
         }
       } catch (error: any) {
@@ -197,68 +179,25 @@ export default function ServiceProviderLoginPage() {
     };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#eef4ff] via-[#f6f9ff] to-[#eaf8ff] flex items-center justify-center p-6 overflow-hidden">
-      {/* BACKGROUND GLOW */}
-
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-orange-300/20 blur-3xl rounded-full animate-pulse" />
-
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-300/20 blur-3xl rounded-full animate-pulse" />
-
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white/80 backdrop-blur-xl rounded-[45px] overflow-hidden shadow-2xl relative z-10">
+    <main className="min-h-screen bg-[#eef4ff] flex items-center justify-center p-6">
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white rounded-[40px] overflow-hidden shadow-2xl">
         {/* LEFT */}
 
-        <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 text-white p-14 flex flex-col justify-center relative overflow-hidden">
-          {/* GLOW */}
-
-          <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-white/10 blur-3xl rounded-full" />
-
-          {/* ICON */}
-
-          <div className="relative z-10 w-32 h-32 rounded-[35px] bg-white/20 backdrop-blur-xl flex items-center justify-center text-7xl shadow-2xl">
-            🛠️
+        <div className="bg-gradient-to-br from-purple-700 via-pink-600 to-blue-500 text-white p-14 flex flex-col justify-center">
+          <div className="w-28 h-28 rounded-[30px] bg-white/20 backdrop-blur-xl flex items-center justify-center text-6xl shadow-2xl">
+            🧑‍🏫
           </div>
 
-          {/* TEXT */}
-
-          <h1 className="relative z-10 text-6xl font-black mt-10 leading-tight">
-            Service Provider Portal
+          <h1 className="text-6xl font-black mt-10 leading-tight">
+            Mentor Portal
           </h1>
 
-          <p className="relative z-10 text-white/80 text-xl mt-6 leading-relaxed">
-            Offer AI, cloud,
-            development, design
-            and startup services
-            to founders and
-            growing startups.
+          <p className="text-white/80 text-xl mt-6 leading-relaxed">
+            Guide startups,
+            mentor founders and
+            help innovative ideas
+            grow successfully.
           </p>
-
-          {/* FEATURES */}
-
-          <div className="relative z-10 mt-10 space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="w-3 h-3 rounded-full bg-white" />
-
-              <p className="text-lg">
-                Post Services
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-3 h-3 rounded-full bg-white" />
-
-              <p className="text-lg">
-                Manage Projects
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-3 h-3 rounded-full bg-white" />
-
-              <p className="text-lg">
-                Connect Startups
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* RIGHT */}
@@ -273,11 +212,9 @@ export default function ServiceProviderLoginPage() {
 
             <p className="text-slate-500 mt-4 text-lg">
               {isSignup
-                ? "Create your service provider account"
+                ? "Create your mentor account"
                 : "Login to continue"}
             </p>
-
-            {/* FORM */}
 
             <div className="mt-10 space-y-5">
               <input
@@ -304,14 +241,12 @@ export default function ServiceProviderLoginPage() {
                 }
               />
 
-              {/* LOGIN BUTTON */}
-
               <button
                 onClick={
                   handleEmailAuth
                 }
                 disabled={loading}
-                className="w-full bg-[#071739] hover:bg-blue-700 transition text-white py-5 rounded-2xl text-xl font-black shadow-xl hover:scale-[1.02]"
+                className="w-full bg-[#071739] hover:bg-blue-700 transition text-white py-5 rounded-2xl text-xl font-black shadow-xl"
               >
                 {loading
                   ? "Please Wait..."
@@ -320,14 +255,12 @@ export default function ServiceProviderLoginPage() {
                   : "Login"}
               </button>
 
-              {/* GOOGLE */}
-
               <button
                 onClick={
                   handleGoogleLogin
                 }
                 disabled={loading}
-                className="w-full border-2 border-slate-200 hover:border-orange-400 transition py-5 rounded-2xl text-lg font-bold flex items-center justify-center gap-4 hover:shadow-xl"
+                className="w-full border-2 border-slate-200 hover:border-blue-500 transition py-5 rounded-2xl text-lg font-bold flex items-center justify-center gap-4"
               >
                 <img
                   src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
@@ -339,8 +272,6 @@ export default function ServiceProviderLoginPage() {
                 Google
               </button>
 
-              {/* TOGGLE */}
-
               <div className="text-center mt-6">
                 <button
                   onClick={() =>
@@ -348,7 +279,7 @@ export default function ServiceProviderLoginPage() {
                       !isSignup
                     )
                   }
-                  className="text-orange-600 font-bold"
+                  className="text-blue-600 font-bold"
                 >
                   {isSignup
                     ? "Already have an account? Login"
@@ -359,8 +290,6 @@ export default function ServiceProviderLoginPage() {
           </div>
         </div>
       </div>
-
-      {/* GLOBAL STYLES */}
 
       <style jsx global>{`
         .input-box {
@@ -375,10 +304,10 @@ export default function ServiceProviderLoginPage() {
         }
 
         .input-box:focus {
-          border-color: #f97316;
+          border-color: #2563eb;
           background: white;
           box-shadow: 0 0 0 4px
-            rgba(249, 115, 22, 0.1);
+            rgba(37, 99, 235, 0.1);
         }
       `}</style>
     </main>
