@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-
 import {
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -49,56 +48,104 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#020817] text-white overflow-hidden flex items-center justify-center px-6 relative">
+    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] overflow-hidden flex items-center justify-center px-6 relative">
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.30),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.25),transparent_30%),radial-gradient(circle_at_50%_90%,rgba(147,197,253,0.30),transparent_35%)]" />
 
-      <div className="absolute top-[-120px] left-[-120px] w-[400px] h-[400px] bg-blue-600/30 blur-[140px] rounded-full" />
-      <div className="absolute bottom-[-120px] right-[-120px] w-[400px] h-[400px] bg-cyan-500/20 blur-[140px] rounded-full" />
+      <div className="relative z-10 w-full max-w-6xl grid lg:grid-cols-2 gap-8">
 
-      <div className="relative z-10 w-full max-w-6xl grid lg:grid-cols-2 bg-[#0f172a] border border-white/10 rounded-[36px] overflow-hidden shadow-2xl">
+        {/* Left */}
+        <div className="hidden lg:flex rounded-[48px] border border-white/80 bg-white/45 backdrop-blur-3xl shadow-2xl shadow-blue-500/10 p-12 flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-4 mb-14">
+              <div className="w-16 h-16 bg-white/80 border border-white rounded-2xl p-2 shadow-lg">
+                <img
+                  src="/campusconnectai.png"
+                  alt="CampusConnectAI Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
 
-        <div className="p-12 flex flex-col justify-center">
-          <div className="flex items-center gap-4 mb-10">
-            <div className="w-20 h-20 bg-white rounded-3xl p-3 shadow-2xl shadow-blue-500/20">
-  <img
-    src="/logo.png"
-    alt="CampusConnect Logo"
-    className="w-full h-full object-contain"
-  />
-</div>
+              <div>
+                <h1 className="text-3xl font-black">
+                  CampusConnect
+                  <span className="text-blue-600">AI</span>
+                </h1>
+
+                <p className="text-xs uppercase tracking-[3px] text-blue-700/70">
+                  Innovation Ecosystem
+                </p>
+              </div>
+            </div>
+
+            <h2 className="text-7xl font-black leading-[0.95] mb-8">
+              Welcome
+              <br />
+              Back.
+            </h2>
+
+            <p className="text-xl text-slate-600 leading-relaxed max-w-lg">
+              Continue building teams, sharing startup ideas, joining
+              hackathons and showcasing your skills with AI.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-5 mt-12">
+            <div className="rounded-[32px] bg-white/55 border border-white/80 backdrop-blur-2xl p-6 shadow-xl">
+              <div className="text-4xl mb-4">🤝</div>
+              <h3 className="font-black text-xl">Team Match</h3>
+              <p className="text-slate-600 text-sm mt-2">
+                Find collaborators
+              </p>
+            </div>
+
+            <div className="rounded-[32px] bg-white/55 border border-white/80 backdrop-blur-2xl p-6 shadow-xl">
+              <div className="text-4xl mb-4">🏆</div>
+              <h3 className="font-black text-xl">Hackathons</h3>
+              <p className="text-slate-600 text-sm mt-2">
+                Build and submit
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Login Card */}
+        <div className="rounded-[48px] border border-white/80 bg-white/55 backdrop-blur-3xl shadow-2xl shadow-blue-500/10 p-8 md:p-12">
+
+          <div className="lg:hidden flex items-center gap-4 mb-10">
+            <div className="w-14 h-14 bg-white/80 border border-white rounded-2xl p-2 shadow-lg">
+              <img
+                src="/campusconnectai.png"
+                alt="CampusConnectAI Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
 
             <div>
-              <h1 className="text-3xl font-bold">CampusConnect</h1>
-              <p className="text-gray-400">AI Startup Platform</p>
+              <h1 className="text-2xl font-black">
+                CampusConnect
+                <span className="text-blue-600">AI</span>
+              </h1>
+              <p className="text-xs uppercase tracking-[2px] text-blue-700/70">
+                Innovation Ecosystem
+              </p>
             </div>
           </div>
 
-          <h2 className="text-6xl font-black mb-8">
-            Welcome <span className="text-blue-500">Back</span>
+          <h2 className="text-5xl font-black mb-3">
+            Login
           </h2>
 
-          <p className="text-gray-400 text-xl leading-relaxed">
-            Continue building startups, collaborating with teammates
-            and using AI-powered tools.
+          <p className="text-slate-600 mb-10">
+            Enter your account credentials
           </p>
-        </div>
 
-        <div className="p-12 flex flex-col justify-center border-l border-white/10">
-          <div className="max-w-md mx-auto w-full">
-
-            <h2 className="text-4xl font-bold mb-3">
-              Login
-            </h2>
-
-            <p className="text-gray-400 mb-8">
-              Enter your account credentials
-            </p>
-
+          <div className="space-y-5">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
-              className="w-full p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none focus:border-blue-500 mb-5"
+              className="w-full p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none focus:border-blue-500 shadow-inner"
             />
 
             <input
@@ -106,59 +153,57 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none focus:border-blue-500 mb-6"
+              className="w-full p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none focus:border-blue-500 shadow-inner"
+            />
+          </div>
+
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="magic-btn mt-7 w-full bg-blue-600 text-white py-5 rounded-full text-xl font-black shadow-2xl shadow-blue-500/30 transition"
+          >
+            {loading ? "Logging in..." : "Login 🚀"}
+          </button>
+
+          <div className="flex items-center gap-4 my-7">
+            <div className="flex-1 h-px bg-slate-300/70" />
+            <span className="text-slate-500 text-sm">OR</span>
+            <div className="flex-1 h-px bg-slate-300/70" />
+          </div>
+
+          <button
+            onClick={handleGoogleLogin}
+            disabled={googleLoading}
+            className="magic-btn w-full bg-white/80 border border-white text-[#07162b] py-5 rounded-full text-lg font-black flex items-center justify-center gap-3 shadow-xl transition"
+          >
+            <img
+              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+              alt="Google"
+              className="w-6 h-6"
             />
 
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 py-5 rounded-2xl text-xl font-bold"
+            {googleLoading ? "Connecting..." : "Continue with Google"}
+          </button>
+
+          <p className="text-center text-slate-600 mt-8">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/signup"
+              className="text-blue-600 hover:text-blue-700 font-black"
             >
-              {loading ? "Logging in..." : "Login 🚀"}
-            </button>
+              Sign Up
+            </Link>
+          </p>
 
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-gray-500 text-sm">OR</span>
-              <div className="flex-1 h-px bg-white/10" />
-            </div>
-
-            <button
-              onClick={handleGoogleLogin}
-              disabled={googleLoading}
-              className="w-full bg-white text-black hover:bg-gray-200 py-5 rounded-2xl text-lg font-bold flex items-center justify-center gap-3"
+          <div className="text-center mt-6">
+            <Link
+              href="/"
+              className="text-slate-500 hover:text-[#07162b] transition"
             >
-              <img
-                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                alt="Google"
-                className="w-6 h-6"
-              />
-
-              {googleLoading ? "Connecting..." : "Continue with Google"}
-            </button>
-
-            <p className="text-center text-gray-400 mt-8">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/signup"
-                className="text-blue-400 hover:text-blue-300 font-semibold"
-              >
-                Sign Up
-              </Link>
-            </p>
-
-            <div className="text-center mt-6">
-              <Link
-                href="/"
-                className="text-gray-500 hover:text-white transition"
-              >
-                ← Back Home
-              </Link>
-            </div>
-
+              ← Back Home
+            </Link>
           </div>
         </div>
-
       </div>
     </main>
   );

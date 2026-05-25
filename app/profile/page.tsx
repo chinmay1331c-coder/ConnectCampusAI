@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
   const [name, setName] = useState("");
   const [college, setCollege] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
   const [bio, setBio] = useState("");
   const [skills, setSkills] = useState("");
   const [interests, setInterests] = useState("");
@@ -14,12 +18,15 @@ export default function ProfilePage() {
   const [image, setImage] = useState("");
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem("campusProfile");
+    const stored = localStorage.getItem("campusProfile");
 
-    if (savedProfile) {
-      const profile = JSON.parse(savedProfile);
+    if (stored) {
+      const profile = JSON.parse(stored);
+
       setName(profile.name || "");
       setCollege(profile.college || "");
+      setEmail(profile.email || "");
+      setPhone(profile.phone || "");
       setBio(profile.bio || "");
       setSkills(profile.skills || "");
       setInterests(profile.interests || "");
@@ -36,7 +43,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 1024 * 1024) {
-      alert("Upload image below 1MB");
+      alert("Image must be below 1MB");
       return;
     }
 
@@ -50,11 +57,30 @@ export default function ProfilePage() {
   };
 
   const saveProfile = () => {
+    if (
+      !name.trim() ||
+      !college.trim() ||
+      !email.trim() ||
+      !phone.trim() ||
+      !bio.trim() ||
+      !skills.trim() ||
+      !interests.trim() ||
+      !projects.trim() ||
+      !github.trim() ||
+      !linkedin.trim() ||
+      !image.trim()
+    ) {
+      alert("Please fill all fields and upload profile image");
+      return;
+    }
+
     localStorage.setItem(
       "campusProfile",
       JSON.stringify({
         name,
         college,
+        email,
+        phone,
         bio,
         skills,
         interests,
@@ -65,176 +91,188 @@ export default function ProfilePage() {
       })
     );
 
-    alert("Profile Saved Successfully 🚀");
+    alert("Profile saved successfully 🚀");
     window.location.href = "/dashboard";
   };
 
   return (
-    <main className="min-h-screen bg-[#020817] text-white p-8 relative overflow-hidden">
+    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] overflow-x-hidden relative">
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.30),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.25),transparent_30%),radial-gradient(circle_at_50%_90%,rgba(147,197,253,0.30),transparent_35%)]" />
 
-      <div className="absolute top-[-120px] left-[-120px] w-[420px] h-[420px] bg-blue-600/30 blur-[140px] rounded-full" />
-      <div className="absolute bottom-[-120px] right-[-120px] w-[420px] h-[420px] bg-cyan-500/20 blur-[140px] rounded-full" />
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-7xl rounded-full border border-white/70 bg-white/45 backdrop-blur-2xl shadow-2xl shadow-blue-500/10 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-white/80 border border-white rounded-2xl p-2 shadow-lg">
+            <img
+              src="/campusconnectai.png"
+              alt="CampusConnectAI Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto">
-
-        <div className="flex items-center justify-between mb-10">
           <div>
-            <h1 className="text-5xl font-black mb-3">
-              Student Profile 👨‍🎓
+            <h1 className="text-xl font-bold tracking-tight">
+              CampusConnect<span className="text-blue-600">AI</span>
             </h1>
-            <p className="text-gray-400 text-lg">
-              Manage your startup profile, skills, projects and portfolio
+            <p className="text-[10px] uppercase tracking-[2px] text-blue-700/70">
+              Innovation Ecosystem
             </p>
           </div>
+        </div>
 
-          <button
-            onClick={() => (window.location.href = "/dashboard")}
-            className="bg-[#0f172a] border border-white/10 hover:bg-white/10 px-6 py-4 rounded-2xl transition"
-          >
-            ← Back Dashboard
+        <Link href="/dashboard">
+          <button className="magic-btn bg-[#07162b] text-white px-6 py-3 rounded-full font-semibold shadow-lg transition">
+            Dashboard
           </button>
-        </div>
+        </Link>
+      </nav>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+      <section className="relative z-10 max-w-6xl mx-auto px-8 pt-40 pb-24">
+        <div className="rounded-[48px] border border-white/80 bg-white/55 backdrop-blur-3xl shadow-2xl shadow-blue-500/10 p-10 md:p-14">
+          <h1 className="text-5xl font-black mb-3">
+            Edit Student Profile 👨‍🎓
+          </h1>
 
-          <div className="bg-[#0f172a] border border-white/10 rounded-[32px] p-8 h-fit text-center shadow-2xl">
-            <div className="w-44 h-44 mx-auto rounded-full overflow-hidden border-4 border-blue-600 bg-[#020817] flex items-center justify-center shadow-lg shadow-blue-600/20">
-              {image ? (
-                <img
-                  src={image}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-7xl">👤</span>
-              )}
+          <p className="text-slate-600 text-lg mb-10">
+            All fields are mandatory. Complete your innovation profile.
+          </p>
+
+          <div className="grid lg:grid-cols-3 gap-10">
+            <div className="lg:col-span-1">
+              <div className="rounded-[36px] bg-white/70 border border-white/80 p-8 shadow-xl text-center">
+                <div className="w-44 h-44 mx-auto rounded-[36px] overflow-hidden bg-white border border-white/80 shadow-xl flex items-center justify-center">
+                  {image ? (
+                    <img
+                      src={image}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-7xl">👤</span>
+                  )}
+                </div>
+
+                <label className="magic-btn mt-6 inline-block bg-blue-600 text-white px-7 py-4 rounded-full font-bold shadow-xl cursor-pointer transition">
+                  Upload Image *
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {image && (
+                  <button
+                    onClick={() => setImage("")}
+                    className="mt-4 w-full bg-red-100 text-red-600 px-6 py-3 rounded-full font-bold"
+                  >
+                    Remove Image
+                  </button>
+                )}
+
+                <p className="text-xs text-slate-500 mt-4">
+                  Required. Image below 1MB.
+                </p>
+              </div>
             </div>
 
-            <div className="flex gap-3 justify-center mt-6">
-              <label className="bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-2xl cursor-pointer font-semibold transition">
-                {image ? "Edit Image" : "Upload Image"}
+            <div className="lg:col-span-2 space-y-5">
+              <div className="grid md:grid-cols-2 gap-5">
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full Name *"
+                  className="w-full p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none focus:border-blue-500 shadow-inner"
                 />
-              </label>
 
-              {image && (
-                <button
-                  onClick={() => setImage("")}
-                  className="bg-red-600/20 text-red-400 hover:bg-red-600/30 px-5 py-3 rounded-2xl font-semibold transition"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
+                <input
+                  required
+                  value={college}
+                  onChange={(e) => setCollege(e.target.value)}
+                  placeholder="College Name *"
+                  className="w-full p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none focus:border-blue-500 shadow-inner"
+                />
 
-            <h2 className="text-3xl font-bold mt-8">
-              {name || "Student Founder"}
-            </h2>
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email Address *"
+                  className="w-full p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none focus:border-blue-500 shadow-inner"
+                />
 
-            <p className="text-gray-400 mt-2">
-              {college || "College Name"}
-            </p>
+                <input
+                  required
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Phone Number *"
+                  className="w-full p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none focus:border-blue-500 shadow-inner"
+                />
+              </div>
 
-            <div className="flex gap-3 justify-center mt-6">
-              {github && (
-                <a
-                  href={github}
-                  target="_blank"
-                  className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm"
-                >
-                  GitHub
-                </a>
-              )}
+              <textarea
+                required
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Bio: Tell about yourself... *"
+                className="w-full h-32 p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none resize-none focus:border-blue-500 shadow-inner"
+              />
 
-              {linkedin && (
-                <a
-                  href={linkedin}
-                  target="_blank"
-                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm"
-                >
-                  LinkedIn
-                </a>
-              )}
+              <textarea
+                required
+                value={skills}
+                onChange={(e) => setSkills(e.target.value)}
+                placeholder="Skills: React, Firebase, AI, UI/UX... *"
+                className="w-full h-28 p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none resize-none focus:border-blue-500 shadow-inner"
+              />
+
+              <textarea
+                required
+                value={interests}
+                onChange={(e) => setInterests(e.target.value)}
+                placeholder="Interests: Startups, Hackathons, AI, Robotics... *"
+                className="w-full h-28 p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none resize-none focus:border-blue-500 shadow-inner"
+              />
+
+              <textarea
+                required
+                value={projects}
+                onChange={(e) => setProjects(e.target.value)}
+                placeholder="Projects: CampusConnectAI, AI Study Buddy... *"
+                className="w-full h-32 p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none resize-none focus:border-blue-500 shadow-inner"
+              />
+
+              <div className="grid md:grid-cols-2 gap-5">
+                <input
+                  required
+                  value={github}
+                  onChange={(e) => setGithub(e.target.value)}
+                  placeholder="GitHub Link *"
+                  className="w-full p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none focus:border-blue-500 shadow-inner"
+                />
+
+                <input
+                  required
+                  value={linkedin}
+                  onChange={(e) => setLinkedin(e.target.value)}
+                  placeholder="LinkedIn Link *"
+                  className="w-full p-5 rounded-[24px] bg-white/70 border border-white/80 outline-none focus:border-blue-500 shadow-inner"
+                />
+              </div>
+
+              <button
+                onClick={saveProfile}
+                className="magic-btn w-full bg-blue-600 text-white py-5 rounded-full text-xl font-black shadow-2xl shadow-blue-500/30 transition"
+              >
+                Save Profile 🚀
+              </button>
             </div>
           </div>
-
-          <div className="lg:col-span-2 bg-[#0f172a] border border-white/10 rounded-[32px] p-8 shadow-2xl">
-            <h2 className="text-3xl font-bold mb-8">
-              Edit Profile Details
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-5">
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Full Name"
-                className="p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none focus:border-blue-500"
-              />
-
-              <input
-                value={college}
-                onChange={(e) => setCollege(e.target.value)}
-                placeholder="College Name"
-                className="p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none focus:border-blue-500"
-              />
-
-              <input
-                value={github}
-                onChange={(e) => setGithub(e.target.value)}
-                placeholder="GitHub Profile Link"
-                className="p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none focus:border-blue-500"
-              />
-
-              <input
-                value={linkedin}
-                onChange={(e) => setLinkedin(e.target.value)}
-                placeholder="LinkedIn Profile Link"
-                className="p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none focus:border-blue-500"
-              />
-            </div>
-
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Bio: Tell us about yourself..."
-              className="w-full h-28 mt-5 p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none resize-none focus:border-blue-500"
-            />
-
-            <textarea
-              value={skills}
-              onChange={(e) => setSkills(e.target.value)}
-              placeholder="Skills: React, AI, Python, UI/UX..."
-              className="w-full h-28 mt-5 p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none resize-none focus:border-blue-500"
-            />
-
-            <textarea
-              value={interests}
-              onChange={(e) => setInterests(e.target.value)}
-              placeholder="Interests: Startups, AI, Robotics, FinTech..."
-              className="w-full h-28 mt-5 p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none resize-none focus:border-blue-500"
-            />
-
-            <textarea
-              value={projects}
-              onChange={(e) => setProjects(e.target.value)}
-              placeholder="Projects: CampusConnect, AI Chatbot..."
-              className="w-full h-32 mt-5 p-5 rounded-2xl bg-[#020817] border border-white/10 outline-none resize-none focus:border-blue-500"
-            />
-
-            <button
-              onClick={saveProfile}
-              className="mt-8 bg-gradient-to-r from-blue-600 to-cyan-600 hover:scale-[1.02] transition px-10 py-5 rounded-2xl font-bold text-xl shadow-xl shadow-blue-600/20"
-            >
-              Save Profile 🚀
-            </button>
-          </div>
-
         </div>
-      </div>
+      </section>
     </main>
   );
 }

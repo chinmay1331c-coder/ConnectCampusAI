@@ -1,289 +1,247 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
+
+const fadeUp = {
+  hidden: {
+    opacity: 0,
+    y: 60,
+  },
+
+  visible: {
+    opacity: 1,
+    y: 0,
+
+    transition: {
+      duration: 0.7,
+    },
+  },
+};
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#07162b] text-white">
+    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] overflow-x-hidden relative">
+      {/* BACKGROUND */}
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.30),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.22),transparent_30%),radial-gradient(circle_at_50%_90%,rgba(147,197,253,0.28),transparent_35%)]" />
 
-      {/* Hero */}
-      <section className="relative min-h-screen overflow-hidden">
-
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#061224] via-[#0b2a4d] to-[#081427]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(59,130,246,0.35),transparent_35%)]" />
-        <div className="absolute right-0 top-0 w-[55%] h-full opacity-40 bg-gradient-to-l from-blue-500/30 to-transparent" />
-
-        {/* Navbar */}
-        <nav className="relative z-10 max-w-7xl mx-auto px-8 py-8 flex items-center justify-between">
-
-          <div className="flex items-center gap-4">
-
-            <div className="w-14 h-14 bg-white/10 border border-white/20 rounded-xl p-2 backdrop-blur">
-              <img
-                src="/logo.png"
-                alt="CampusConnectAI Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <h1 className="text-3xl font-bold tracking-wide">
-              <span className="text-white">
-                CampusConnect
-              </span>
-              <span className="text-blue-300">
-                AI
-              </span>
-            </h1>
-
+      {/* NAVBAR */}
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-7xl rounded-full border border-white/70 bg-white/45 backdrop-blur-2xl shadow-2xl px-6 py-4 flex items-center justify-between">
+        {/* LOGO */}
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-white/80 border border-white rounded-2xl p-2 shadow-lg">
+            <img
+              src="/campusconnectai.png"
+              alt="CampusConnectAI Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
-
-          <div className="hidden md:flex items-center gap-10 text-sm text-blue-100">
-            <a href="#home" className="border-b border-white pb-1">
-              Home
-            </a>
-
-            <a href="#features" className="hover:text-white">
-              Features
-            </a>
-
-            <a href="#about" className="hover:text-white">
-              About
-            </a>
-
-            <Link href="/login">
-              <button className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-md font-semibold transition">
-                Get Started
-              </button>
-            </Link>
-          </div>
-
-        </nav>
-
-        {/* Hero Content */}
-        <div
-          id="home"
-          className="relative z-10 max-w-7xl mx-auto px-8 pt-20 pb-32"
-        >
-
-          <div className="max-w-3xl">
-
-            <h2 className="text-6xl md:text-7xl font-serif font-bold leading-tight mb-8">
-              Elevating Student
-              <br />
-              Innovation Ecosystem
-            </h2>
-
-            <p className="text-2xl text-blue-100 mb-10">
-              AI-Powered Student Collaboration & Innovation Ecosystem
-            </p>
-
-            <Link href="/login">
-              <button className="bg-blue-500 hover:bg-blue-600 px-10 py-5 rounded-lg font-bold shadow-xl shadow-blue-600/30 transition">
-                Learn More
-              </button>
-            </Link>
-
-          </div>
-
-        </div>
-
-        {/* Floating Cards */}
-        <div className="relative z-20 max-w-7xl mx-auto px-8 -mt-24 grid lg:grid-cols-2 gap-0">
-
-          {/* About */}
-          <div className="bg-[#0a2545]/95 backdrop-blur-xl p-10 min-h-[360px] border border-white/10">
-
-            <h3 className="text-3xl font-bold mb-6">
-              About CampusConnectAI
-            </h3>
-
-            <p className="text-blue-100 leading-relaxed mb-8">
-              CampusConnectAI is an AI-powered student collaboration,
-              startup and innovation ecosystem designed to help students
-              build teams, share startup ideas, participate in hackathons
-              and showcase skills through intelligent networking.
-            </p>
-
-            <div className="h-40 rounded-xl bg-gradient-to-br from-blue-400/30 to-white/10 border border-white/10 flex items-center justify-center">
-              <span className="text-5xl">
-                🚀
-              </span>
-            </div>
-
-          </div>
-
-          {/* Expertise */}
-          <div className="bg-[#102f57]/95 backdrop-blur-xl p-10 min-h-[420px] border border-white/10 shadow-2xl lg:-mt-10">
-
-            <h3 className="text-3xl font-bold mb-8">
-              Core Capabilities
-            </h3>
-
-            <div className="grid grid-cols-2 gap-8">
-
-              {[
-                ["🤖", "AI Matching", "Smart teammate recommendation"],
-                ["💡", "Idea Sharing", "Startup idea collaboration"],
-                ["🏆", "Hackathons", "Team building and innovation"],
-                ["👤", "Skill Profiles", "Showcase student abilities"],
-              ].map(([icon, title, text]) => (
-
-                <div key={title}>
-
-                  <div className="text-4xl mb-4">
-                    {icon}
-                  </div>
-
-                  <h4 className="font-bold text-lg mb-2">
-                    {title}
-                  </h4>
-
-                  <p className="text-blue-100 text-sm leading-relaxed">
-                    {text}
-                  </p>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      {/* Platform Overview */}
-      <section
-        id="about"
-        className="bg-white text-[#081427] py-24 px-8"
-      >
-
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
 
           <div>
+            <h1 className="text-xl font-bold">
+              CampusConnect
+              <span className="text-blue-600">AI</span>
+            </h1>
 
-            <h2 className="text-5xl font-serif font-bold mb-8">
-              Platform Overview
-            </h2>
+            <p className="text-[10px] uppercase tracking-[2px] text-blue-700/70">
+              Startup Ecosystem Platform
+            </p>
+          </div>
+        </div>
 
-            <p className="text-gray-600 leading-relaxed mb-10">
-              Students struggle to find teammates, startup collaborators,
-              project partners, mentors and hackathon opportunities.
-              CampusConnectAI solves this by creating a campus-wide innovation
-              ecosystem powered by AI.
+        {/* LINKS */}
+        <div className="hidden md:flex items-center gap-8 font-semibold text-slate-700">
+          <a href="#features">Features</a>
+
+          <a href="#about">About Us</a>
+
+          <a href="#overview">Overview</a>
+
+          <a href="#contact">Contact</a>
+        </div>
+
+        {/* BUTTONS */}
+        <div className="flex items-center gap-4">
+          <Link href="/login">
+            <button className="bg-white/70 border border-white px-6 py-3 rounded-full font-semibold shadow-lg hover:-translate-y-1 transition">
+              Login
+            </button>
+          </Link>
+
+          <Link href="/onboarding">
+            <button className="bg-[#07162b] text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:-translate-y-1 transition">
+              Get Started
+            </button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <motion.section
+        id="hero"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeUp}
+        className="relative z-10 max-w-7xl mx-auto px-8 pt-48 pb-24"
+      >
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          {/* LEFT */}
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/70 bg-white/60 px-5 py-3 shadow-xl mb-8">
+              <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+
+              <span className="text-sm text-slate-700">
+                AI-powered startup collaboration ecosystem
+              </span>
+            </div>
+
+            <h1 className="text-6xl md:text-7xl font-black leading-[0.95] mb-8">
+              Build.
+              <br />
+              Connect.
+              <br />
+              Scale 🚀
+            </h1>
+
+            <p className="text-xl text-slate-600 leading-relaxed max-w-2xl mb-10">
+              Discover startup ideas, find teammates, connect with mentors,
+              investors and organizers — all in one intelligent platform.
             </p>
 
-            <div className="grid grid-cols-3 gap-6">
+            <div className="flex flex-wrap gap-5">
+              <Link href="/onboarding">
+                <button className="bg-blue-600 text-white px-10 py-5 rounded-full font-bold text-lg shadow-2xl hover:scale-105 transition">
+                  Start Now 🚀
+                </button>
+              </Link>
 
+              <a href="#features">
+                <button className="bg-white/70 border border-white px-10 py-5 rounded-full font-bold text-lg shadow-xl hover:-translate-y-1 transition">
+                  Explore Platform
+                </button>
+              </a>
+            </div>
+
+            {/* STATS */}
+            <div className="grid grid-cols-3 gap-5 mt-14">
               {[
-                ["AI", "Innovation"],
-                ["Student", "Collaboration"],
-                ["Startup", "Ecosystem"],
-              ].map(([num, label]) => (
-
-                <div
+                ["10K+", "Students"],
+                ["2K+", "Startup Ideas"],
+                ["500+", "Mentors"],
+              ].map(([number, label]) => (
+                <motion.div
+                  whileHover={{
+                    scale: 1.05,
+                    y: -10,
+                  }}
                   key={label}
-                  className="border border-gray-200 p-6"
+                  className="rounded-[28px] bg-white/65 border border-white/70 p-6 shadow-xl backdrop-blur-xl"
                 >
+                  <h2 className="text-3xl font-black">{number}</h2>
 
-                  <h3 className="text-3xl text-blue-700 font-bold">
-                    {num}
-                  </h3>
+                  <p className="text-slate-600 mt-2">{label}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
 
-                  <p className="text-gray-600 text-sm mt-2">
-                    {label}
-                  </p>
+          {/* RIGHT SIDE */}
+          <div className="relative h-[650px] hidden lg:flex items-center justify-center">
+            {/* GLOW */}
+            <div className="absolute w-[600px] h-[600px] rounded-full bg-blue-400/20 blur-3xl animate-pulse" />
 
+            {/* ORBIT */}
+            <div className="absolute w-[520px] h-[520px] border border-blue-200/40 rounded-full animate-spin [animation-duration:25s]" />
+
+            <div className="absolute w-[380px] h-[380px] border border-cyan-200/40 rounded-full animate-spin [animation-duration:18s] [animation-direction:reverse]" />
+
+            {/* MAIN CARD */}
+            <motion.div
+              whileHover={{
+                scale: 1.05,
+              }}
+              className="absolute z-20 w-[340px] rounded-[42px] bg-white/70 border border-white/80 backdrop-blur-3xl p-8 shadow-[0_35px_80px_rgba(59,130,246,0.25)] animate-float"
+            >
+              <div className="flex items-center gap-5 mb-6">
+                <div className="w-20 h-20 rounded-[28px] bg-blue-100 flex items-center justify-center text-5xl shadow-lg">
+                  🚀
                 </div>
 
-              ))}
+                <div>
+                  <h2 className="text-4xl font-black leading-tight">
+                    Startup
+                    <br />
+                    Founders
+                  </h2>
 
-            </div>
-
-          </div>
-
-          <div className="h-[360px] bg-gradient-to-br from-blue-100 via-white to-blue-300 rounded-sm shadow-2xl border border-gray-200 flex items-center justify-center">
-
-            <div className="text-center">
-
-              <div className="text-7xl mb-6">
-                🚀
+                  <p className="text-slate-600 mt-2">
+                    Build innovative startups
+                  </p>
+                </div>
               </div>
 
-              <h3 className="text-3xl font-bold">
-                AI Innovation Workspace
-              </h3>
+              <div className="grid grid-cols-2 gap-4 mt-8">
+                <div className="bg-blue-50 rounded-[22px] p-5 shadow">
+                  <h3 className="font-black text-3xl">120+</h3>
 
-              <p className="text-gray-500 mt-3">
-                Built for students, teams and startups
-              </p>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Active Startups
+                  </p>
+                </div>
 
-            </div>
+                <div className="bg-cyan-50 rounded-[22px] p-5 shadow">
+                  <h3 className="font-black text-3xl">85%</h3>
 
+                  <p className="text-sm text-slate-600 mt-1">
+                    Match Accuracy
+                  </p>
+                </div>
+              </div>
+            </motion.div>
           </div>
-
         </div>
+      </motion.section>
 
-      </section>
-
-      {/* Features */}
-      <section
+      {/* FEATURES */}
+      <motion.section
         id="features"
-        className="bg-[#07162b] py-24 px-8"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeUp}
+        className="relative z-10 max-w-7xl mx-auto px-8 py-20"
       >
-
-        <div className="max-w-7xl mx-auto">
-
-          <h2 className="text-5xl font-serif font-bold mb-14 text-center">
-            Core Features
+        <div className="rounded-[48px] bg-white/60 border border-white/80 shadow-2xl p-10">
+          <h2 className="text-5xl font-black mb-10">
+            Core Features 🚀
           </h2>
 
-          <div className="grid md:grid-cols-3 gap-8">
-
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              "Student Networking Platform",
-              "AI Team Formation System",
-              "Startup Idea Sharing",
-              "Hackathon Portal",
-              "Skill Showcase Profiles",
-              "Smart Mentor Matching",
-            ].map((item) => (
-
-              <div
-                key={item}
-                className="bg-[#0a2545] border border-white/10 p-8 min-h-[180px] hover:bg-[#10345f] transition"
+              ["🌐", "Networking", "Discover founders and startup posts"],
+              ["🤝", "Collab Page", "Request to join teams and collaborate"],
+              ["💡", "Startup Ideas", "Share ideas and get feedback"],
+              ["🏆", "Hackathons", "Find innovation challenges"],
+            ].map(([icon, title, desc]) => (
+              <motion.div
+                whileHover={{
+                  scale: 1.05,
+                  y: -10,
+                }}
+                key={title}
+                className="rounded-[32px] bg-white/75 border border-white p-7 shadow-xl"
               >
+                <div className="text-5xl mb-5">{icon}</div>
 
-                <h3 className="text-2xl font-bold mb-4">
-                  {item}
-                </h3>
+                <h3 className="text-2xl font-black">{title}</h3>
 
-                <p className="text-blue-100">
-                  Designed to help students collaborate, innovate and build
-                  real-world startup projects.
-                </p>
-
-              </div>
-
+                <p className="text-slate-600 mt-3">{desc}</p>
+              </motion.div>
             ))}
-
           </div>
-
-          <div className="text-center mt-16">
-
-            <Link href="/signup">
-              <button className="bg-blue-500 hover:bg-blue-600 px-12 py-5 rounded-lg text-xl font-bold shadow-xl shadow-blue-600/30 transition">
-                Sign Up Now
-              </button>
-            </Link>
-
-          </div>
-
         </div>
-
-      </section>
-
+      </motion.section>
     </main>
   );
 }
