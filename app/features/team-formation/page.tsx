@@ -1,491 +1,486 @@
-// app/features/team-formation/page.tsx
-
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import {
+  addDoc,
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type CollabPost = {
-  id: number;
-  title: string;
+  id: string;
+  name: string;
+  role: string;
+  skills: string[];
+  interests: string[];
   domain: string;
-  description: string;
-  roles: string;
-  skillsNeeded: string;
-  ownerName: string;
-  requests: {
-    name: string;
-    skills: string;
-    message: string;
-    status: "Pending" | "Accepted" | "Rejected";
-  }[];
-  teamMembers: string[];
+  idea: string;
+  bio: string;
+};
+
+type MatchResult = CollabPost & {
+  matchScore: number;
+  reasons: string[];
 };
 
 export default function TeamFormationPage() {
-  const router = useRouter();
+  const [posts, setPosts] = useState<CollabPost[]>([]);
+  const [matches, setMatches] = useState<MatchResult[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [posts, setPosts] = useState<CollabPost[]>([
-    {
-      id: 1,
-      title: "AI Study Assistant",
-      domain: "AI / EdTech",
-      description:
-        "Building an AI-powered study assistant for students and founders.",
-      roles: "Developer, Designer, Business",
-      skillsNeeded: "React, AI, UI/UX, Marketing",
-      ownerName: "Startup Builder",
-      requests: [],
-      teamMembers: ["Startup Builder"],
-    },
-  ]);
-
-  const [form, setForm] = useState({
-    title: "",
+  const [filters, setFilters] = useState({
     domain: "",
-    description: "",
-    roles: "",
-    skillsNeeded: "",
-    ownerName: "",
+    skill: "",
+    minScore: 0,
   });
 
-  const [requestForm, setRequestForm] = useState({
-    postId: 0,
-    name: "",
+  const [userInput, setUserInput] = useState({
     skills: "",
-    message: "",
+    interests: "",
+    role: "",
+    domain: "",
+    idea: "",
   });
 
-  const createPost = () => {
-    if (
-      !form.title ||
-      !form.domain ||
-      !form.description ||
-      !form.roles ||
-      !form.skillsNeeded ||
-      !form.ownerName
-    ) {
-      alert("Please fill all fields");
-      return;
-    }
-
-    const newPost: CollabPost = {
-      id: Date.now(),
-      ...form,
-      requests: [],
-      teamMembers: [form.ownerName],
-    };
-
-    setPosts([newPost, ...posts]);
-
-    setForm({
-      title: "",
-      domain: "",
-      description: "",
-      roles: "",
-      skillsNeeded: "",
-      ownerName: "",
-    });
-  };
-
-  const sendRequest = () => {
-    if (
-      !requestForm.postId ||
-      !requestForm.name ||
-      !requestForm.skills ||
-      !requestForm.message
-    ) {
-      alert("Please fill request details");
-      return;
-    }
-
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === requestForm.postId
-          ? {
-              ...post,
-              requests: [
-                ...post.requests,
-                {
-                  name: requestForm.name,
-                  skills: requestForm.skills,
-                  message: requestForm.message,
-                  status: "Pending",
-                },
-              ],
-            }
-          : post
-      )
+  useEffect(() => {
+    const q = query(
+      collection(db, "collabPosts"),
+      orderBy("createdAt", "desc")
     );
 
-    setRequestForm({
-      postId: 0,
-      name: "",
-      skills: "",
-      message: "",
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as CollabPost[];
+
+      setPosts(data);
     });
-  };
 
-  const updateRequest = (
-    postId: number,
-    requestIndex: number,
-    status: "Accepted" | "Rejected"
-  ) => {
-    setPosts((prev) =>
-      prev.map((post) => {
-        if (post.id !== postId) return post;
+    return () => unsub();
+  }, []);
 
-        const updatedRequests = [...post.requests];
+  const runMatchingAlgorithm = () => {
+    setLoading(true);
 
-        updatedRequests[requestIndex] = {
-          ...updatedRequests[requestIndex],
-          status,
-        };
+    const userSkills = userInput.skills
+      .toLowerCase()
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-        const updatedMembers =
-          status === "Accepted"
-            ? [...post.teamMembers, updatedRequests[requestIndex].name]
-            : post.teamMembers;
+    const userInterests = userInput.interests
+      .toLowerCase()
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    setTimeout(() => {
+      const calculatedMatches: MatchResult[] = posts.map((post) => {
+        const postSkills = post.skills.map((s) =>
+          s.toLowerCase()
+        );
+
+        const postInterests = post.interests.map((s) =>
+          s.toLowerCase()
+        );
+
+        let skillMatch = 0;
+        let domainMatch = 0;
+        let roleMatch = 0;
+        let ideaMatch = 0;
+
+        const reasons: string[] = [];
+
+        const commonSkills = userSkills.filter((skill) =>
+          postSkills.includes(skill)
+        );
+
+        skillMatch =
+          commonSkills.length /
+          Math.max(userSkills.length || 1, 1);
+
+        if (commonSkills.length > 0) {
+          reasons.push(
+            `Strong skill alignment (${commonSkills.join(", ")})`
+          );
+        }
+
+        if (
+          post.domain.toLowerCase() ===
+          userInput.domain.toLowerCase()
+        ) {
+          domainMatch = 1;
+          reasons.push(
+            `Same domain (${post.domain})`
+          );
+        }
+
+        if (
+          post.role.toLowerCase() !==
+          userInput.role.toLowerCase()
+        ) {
+          roleMatch = 1;
+          reasons.push(
+            `Complementary role (${post.role})`
+          );
+        }
+
+        const ideaWords = userInput.idea
+          .toLowerCase()
+          .split(" ");
+
+        const postIdea = post.idea.toLowerCase();
+
+        const commonIdeaWords = ideaWords.filter((word) =>
+          postIdea.includes(word)
+        );
+
+        ideaMatch =
+          commonIdeaWords.length /
+          Math.max(ideaWords.length || 1, 1);
+
+        if (ideaMatch > 0.3) {
+          reasons.push(
+            "Startup idea compatibility detected"
+          );
+        }
+
+        const interestOverlap = userInterests.filter(
+          (interest) =>
+            postInterests.includes(interest)
+        );
+
+        if (interestOverlap.length > 0) {
+          reasons.push(
+            `Shared interests (${interestOverlap.join(", ")})`
+          );
+        }
+
+        const totalScore =
+          skillMatch * 0.4 +
+          domainMatch * 0.3 +
+          roleMatch * 0.2 +
+          ideaMatch * 0.1;
 
         return {
           ...post,
-          requests: updatedRequests,
-          teamMembers: updatedMembers,
+          matchScore: Math.round(totalScore * 100),
+          reasons,
         };
-      })
-    );
+      });
+
+      const sorted = calculatedMatches
+        .filter((m) => m.matchScore >= filters.minScore)
+        .filter((m) =>
+          filters.domain
+            ? m.domain
+                .toLowerCase()
+                .includes(filters.domain.toLowerCase())
+            : true
+        )
+        .filter((m) =>
+          filters.skill
+            ? m.skills
+                .join(" ")
+                .toLowerCase()
+                .includes(filters.skill.toLowerCase())
+            : true
+        )
+        .sort((a, b) => b.matchScore - a.matchScore);
+
+      setMatches(sorted);
+      setLoading(false);
+    }, 1200);
   };
 
+  const sendTeamRequest = async (
+    match: MatchResult
+  ) => {
+    await addDoc(collection(db, "teamRequests"), {
+      sender: "Startup User",
+      receiver: match.name,
+      roleNeeded: match.role,
+      idea: userInput.idea,
+      status: "pending",
+      createdAt: serverTimestamp(),
+    });
+
+    alert("Collaboration request sent 🚀");
+  };
+
+  const filteredMatches = useMemo(() => {
+    return matches;
+  }, [matches]);
+
   return (
-    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] px-6 py-10 relative overflow-hidden">
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.25),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.18),transparent_30%)]" />
-
-      <div className="relative z-10 max-w-7xl mx-auto">
-        {/* HEADER */}
-
-        <div className="rounded-full border border-white/70 bg-white/60 backdrop-blur-2xl shadow-2xl px-6 py-4 flex items-center justify-between mb-12">
-          <div>
-            <h1 className="text-2xl font-black">
-              Team Formation 🤝
-            </h1>
-
-            <p className="text-slate-500">
-              Create teams, send requests and find AI-powered matches.
-            </p>
-          </div>
-
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="bg-[#07162b] text-white px-6 py-3 rounded-full font-bold"
-          >
-            Back Dashboard
-          </button>
-        </div>
-
+    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] p-8">
+      <div className="max-w-7xl mx-auto">
         {/* HERO */}
 
-        <div className="rounded-[50px] bg-white/70 border border-white/80 backdrop-blur-2xl shadow-2xl p-12 mb-12">
-          <h1 className="text-7xl font-black leading-[0.9]">
-            Build Your
-            <br />
-            Startup Team 🚀
+        <div className="bg-white rounded-[40px] shadow-xl p-10">
+          <h1 className="text-6xl font-black">
+            AI Team Match 🤝
           </h1>
 
-          <p className="text-xl text-slate-600 leading-relaxed mt-8 max-w-3xl">
-            Post your startup idea, find collaborators, receive team requests
-            and use AI Team Match to discover the best teammates based on
-            skills, interests and roles.
-          </p>
-        </div>
-
-        {/* AI TEAM MATCH CARD */}
-
-        <div className="rounded-[40px] bg-gradient-to-br from-blue-600 to-cyan-500 text-white p-10 shadow-[0_30px_80px_rgba(59,130,246,0.35)] mb-12">
-          <div className="text-7xl">🤖</div>
-
-          <h2 className="text-5xl font-black mt-6">
-            Find Your Perfect Teammates with AI
-          </h2>
-
-          <p className="text-blue-100 text-xl leading-relaxed mt-5 max-w-3xl">
-            AI matches teammates based on skills, interests, preferred role and
-            startup idea compatibility.
+          <p className="text-slate-500 text-xl mt-4">
+            Find the best teammates using real-time AI
+            matching based on skills, domain, and
+            startup ideas.
           </p>
 
-          <button
-            onClick={() => router.push("/features/ai-team-match")}
-            className="mt-8 bg-white text-[#07162b] px-10 py-5 rounded-2xl font-black text-xl hover:scale-105 transition shadow-xl"
-          >
-            Find Matches →
-          </button>
-        </div>
+          {/* INPUTS */}
 
-        {/* CREATE POST */}
-
-        <div className="rounded-[40px] bg-white/80 border border-white shadow-2xl p-10">
-          <h2 className="text-5xl font-black">
-            Create Collaboration Post ✍️
-          </h2>
-
-          <div className="grid lg:grid-cols-2 gap-5 mt-8">
+          <div className="grid lg:grid-cols-2 gap-5 mt-10">
             <input
-              placeholder="Startup / Project Title"
+              placeholder="Skills (React, AI, Marketing)"
               className="input-box"
-              value={form.title}
+              value={userInput.skills}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  title: e.target.value,
+                setUserInput({
+                  ...userInput,
+                  skills: e.target.value,
                 })
               }
             />
 
             <input
-              placeholder="Domain / Category"
+              placeholder="Interests"
               className="input-box"
-              value={form.domain}
+              value={userInput.interests}
               onChange={(e) =>
-                setForm({
-                  ...form,
+                setUserInput({
+                  ...userInput,
+                  interests: e.target.value,
+                })
+              }
+            />
+
+            <input
+              placeholder="Preferred Role"
+              className="input-box"
+              value={userInput.role}
+              onChange={(e) =>
+                setUserInput({
+                  ...userInput,
+                  role: e.target.value,
+                })
+              }
+            />
+
+            <input
+              placeholder="Domain"
+              className="input-box"
+              value={userInput.domain}
+              onChange={(e) =>
+                setUserInput({
+                  ...userInput,
+                  domain: e.target.value,
+                })
+              }
+            />
+
+            <textarea
+              placeholder="Startup Idea / Description"
+              className="input-box h-28 lg:col-span-2"
+              value={userInput.idea}
+              onChange={(e) =>
+                setUserInput({
+                  ...userInput,
+                  idea: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          {/* FILTERS */}
+
+          <div className="grid lg:grid-cols-3 gap-5 mt-8">
+            <input
+              placeholder="Filter by Domain"
+              className="input-box"
+              value={filters.domain}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
                   domain: e.target.value,
                 })
               }
             />
 
             <input
-              placeholder="Required Roles"
+              placeholder="Filter by Skill"
               className="input-box"
-              value={form.roles}
+              value={filters.skill}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  roles: e.target.value,
+                setFilters({
+                  ...filters,
+                  skill: e.target.value,
                 })
               }
             />
 
             <input
-              placeholder="Skills Needed"
+              type="number"
+              placeholder="Minimum Match %"
               className="input-box"
-              value={form.skillsNeeded}
+              value={filters.minScore}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  skillsNeeded: e.target.value,
-                })
-              }
-            />
-
-            <input
-              placeholder="Your Name"
-              className="input-box"
-              value={form.ownerName}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  ownerName: e.target.value,
-                })
-              }
-            />
-
-            <textarea
-              placeholder="Project Description"
-              className="input-box h-28 lg:col-span-2"
-              value={form.description}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  description: e.target.value,
+                setFilters({
+                  ...filters,
+                  minScore: Number(e.target.value),
                 })
               }
             />
           </div>
 
           <button
-            onClick={createPost}
-            className="mt-8 bg-[#07162b] text-white px-10 py-5 rounded-2xl font-black"
+            onClick={runMatchingAlgorithm}
+            className="mt-8 bg-[#07162b] text-white px-10 py-5 rounded-2xl font-black text-xl"
           >
-            Create Post
+            Find Matches ⚡
           </button>
         </div>
 
-        {/* POSTS */}
+        {/* LOADING */}
 
-        <div className="space-y-10 mt-12">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="rounded-[40px] bg-white/80 border border-white shadow-2xl p-10"
-            >
-              <span className="bg-blue-100 text-blue-700 px-5 py-2 rounded-full font-bold">
-                {post.domain}
-              </span>
+        {loading && (
+          <div className="flex justify-center py-20">
+            <div className="bg-white rounded-[30px] shadow-xl px-10 py-8 text-2xl font-black animate-pulse">
+              AI is analyzing live collaboration data...
+            </div>
+          </div>
+        )}
 
-              <h2 className="text-5xl font-black mt-5">
-                {post.title}
-              </h2>
+        {/* MATCH RESULTS */}
 
-              <p className="text-slate-600 text-lg mt-5 leading-relaxed">
-                {post.description}
-              </p>
+        {!loading && (
+          <div className="grid lg:grid-cols-2 gap-8 mt-10">
+            {filteredMatches.map((match) => (
+              <div
+                key={match.id}
+                className="bg-white rounded-[35px] shadow-xl p-8"
+              >
+                <div className="flex justify-between items-start gap-5">
+                  <div>
+                    <h2 className="text-4xl font-black">
+                      {match.name}
+                    </h2>
 
-              <div className="grid lg:grid-cols-2 gap-5 mt-8">
-                <InfoBox title="Required Roles" value={post.roles} />
-                <InfoBox title="Skills Needed" value={post.skillsNeeded} />
-              </div>
+                    <p className="text-blue-600 font-bold mt-3">
+                      {match.role}
+                    </p>
+                  </div>
 
-              {/* TEAM MEMBERS */}
+                  <div
+                    className={`px-6 py-4 rounded-full font-black text-2xl ${
+                      match.matchScore >= 80
+                        ? "bg-green-100 text-green-700"
+                        : match.matchScore >= 60
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {match.matchScore}%
+                  </div>
+                </div>
 
-              <div className="bg-[#f4f8ff] rounded-[28px] p-6 mt-8">
-                <h3 className="text-3xl font-black">
-                  Team Members 👥
-                </h3>
+                <p className="text-slate-600 mt-6">
+                  {match.bio}
+                </p>
 
-                <div className="flex flex-wrap gap-3 mt-5">
-                  {post.teamMembers.map((member, index) => (
+                <div className="flex flex-wrap gap-3 mt-6">
+                  {match.skills.map((skill) => (
                     <span
-                      key={index}
-                      className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold"
+                      key={skill}
+                      className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-bold"
                     >
-                      {member}
+                      {skill}
                     </span>
                   ))}
                 </div>
-              </div>
 
-              {/* SEND REQUEST */}
+                <div className="mt-6">
+                  <h3 className="font-black text-xl">
+                    Domain
+                  </h3>
 
-              <div className="bg-white rounded-[28px] border border-[#dbe4f0] p-6 mt-8">
-                <h3 className="text-3xl font-black">
-                  Send Join Request 📩
-                </h3>
-
-                <div className="grid lg:grid-cols-3 gap-4 mt-5">
-                  <input
-                    placeholder="Your Name"
-                    className="input-box"
-                    value={
-                      requestForm.postId === post.id
-                        ? requestForm.name
-                        : ""
-                    }
-                    onChange={(e) =>
-                      setRequestForm({
-                        ...requestForm,
-                        postId: post.id,
-                        name: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    placeholder="Your Skills"
-                    className="input-box"
-                    value={
-                      requestForm.postId === post.id
-                        ? requestForm.skills
-                        : ""
-                    }
-                    onChange={(e) =>
-                      setRequestForm({
-                        ...requestForm,
-                        postId: post.id,
-                        skills: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    placeholder="Message"
-                    className="input-box"
-                    value={
-                      requestForm.postId === post.id
-                        ? requestForm.message
-                        : ""
-                    }
-                    onChange={(e) =>
-                      setRequestForm({
-                        ...requestForm,
-                        postId: post.id,
-                        message: e.target.value,
-                      })
-                    }
-                  />
+                  <p className="text-slate-600 mt-2">
+                    {match.domain}
+                  </p>
                 </div>
 
-                <button
-                  onClick={sendRequest}
-                  className="mt-5 bg-[#07162b] text-white px-8 py-4 rounded-2xl font-black"
-                >
-                  Send Request
-                </button>
-              </div>
+                <div className="mt-6">
+                  <h3 className="font-black text-xl">
+                    Startup Idea
+                  </h3>
 
-              {/* REQUESTS */}
+                  <p className="text-slate-600 mt-2">
+                    {match.idea}
+                  </p>
+                </div>
 
-              <div className="bg-[#f4f8ff] rounded-[28px] p-6 mt-8">
-                <h3 className="text-3xl font-black">
-                  Incoming Requests 📬
-                </h3>
+                {/* AI REASONS */}
 
-                <div className="space-y-5 mt-5">
-                  {post.requests.length === 0 && (
-                    <p className="text-slate-500">
-                      No requests yet.
-                    </p>
-                  )}
+                <div className="bg-[#f4f8ff] rounded-[25px] p-5 mt-8">
+                  <h3 className="font-black text-xl">
+                    Why AI Suggested This Match
+                  </h3>
 
-                  {post.requests.map((req, index) => (
-                    <div
-                      key={index}
-                      className="bg-white rounded-[25px] p-6 flex items-center justify-between gap-5"
-                    >
-                      <div>
-                        <h4 className="text-2xl font-black">
-                          {req.name}
-                        </h4>
-
-                        <p className="text-slate-500 mt-2">
-                          Skills: {req.skills}
-                        </p>
-
-                        <p className="text-slate-600 mt-2">
-                          {req.message}
-                        </p>
-
-                        <p className="font-bold mt-3">
-                          Status: {req.status}
-                        </p>
+                  <div className="space-y-2 mt-4">
+                    {match.reasons.map((reason, i) => (
+                      <div
+                        key={i}
+                        className="bg-white px-4 py-3 rounded-xl text-sm font-semibold"
+                      >
+                        ✅ {reason}
                       </div>
+                    ))}
+                  </div>
+                </div>
 
-                      {req.status === "Pending" && (
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() =>
-                              updateRequest(post.id, index, "Accepted")
-                            }
-                            className="bg-green-600 text-white px-5 py-3 rounded-2xl font-black"
-                          >
-                            Accept
-                          </button>
+                {/* ACTIONS */}
 
-                          <button
-                            onClick={() =>
-                              updateRequest(post.id, index, "Rejected")
-                            }
-                            className="bg-red-600 text-white px-5 py-3 rounded-2xl font-black"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div className="grid grid-cols-3 gap-4 mt-8">
+                  <button className="bg-[#07162b] text-white py-4 rounded-2xl font-black">
+                    🤝 Connect
+                  </button>
+
+                  <button className="bg-blue-600 text-white py-4 rounded-2xl font-black">
+                    💬 Chat
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      sendTeamRequest(match)
+                    }
+                    className="bg-green-600 text-white py-4 rounded-2xl font-black"
+                  >
+                    ➕ Invite
+                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && filteredMatches.length === 0 && (
+          <div className="bg-white rounded-[35px] p-12 shadow-xl text-center mt-10">
+            <h2 className="text-4xl font-black">
+              No matches found yet
+            </h2>
+
+            <p className="text-slate-500 mt-4 text-lg">
+              Enter skills, interests, and startup idea
+              to generate AI-powered collaboration
+              matches.
+            </p>
+          </div>
+        )}
       </div>
 
       <style jsx global>{`
@@ -498,33 +493,7 @@ export default function TeamFormationPage() {
           outline: none;
           font-size: 15px;
         }
-
-        .input-box:focus {
-          border-color: #2563eb;
-          background: white;
-          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-        }
       `}</style>
     </main>
-  );
-}
-
-function InfoBox({
-  title,
-  value,
-}: {
-  title: string;
-  value: string;
-}) {
-  return (
-    <div className="bg-[#f4f8ff] rounded-[24px] p-6">
-      <h3 className="text-2xl font-black">
-        {title}
-      </h3>
-
-      <p className="text-slate-600 mt-3">
-        {value}
-      </p>
-    </div>
   );
 }

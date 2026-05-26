@@ -6,7 +6,7 @@ export default function InvestorLoginPage() {
   const router = useRouter();
 
   const login = () => {
-    router.push("/investor-dashboard");
+    router.push("/investor-onboarding");
   };
 
   return (
