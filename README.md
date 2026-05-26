@@ -216,7 +216,7 @@ npm run dev
 ## 🌐 Open in Browser
 
 ```txt
-http://localhost:3000
+https://campusconnectai-six.vercel.app
 ```
 
 ---
