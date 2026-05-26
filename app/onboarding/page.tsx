@@ -42,7 +42,7 @@ export default function OnboardingPage() {
       title: "Organizer",
       icon: "🏢",
       desc: "Event organizers, incubators, or institutions",
-      route: "/admin-login",
+      route: "/organizer-login",
       bg: "from-purple-100 to-pink-100",
       glow: "hover:shadow-purple-300/60",
     },

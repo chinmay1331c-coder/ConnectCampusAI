@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 type Provider = {
   id: number;
   name: string;
-  logo: string;
   category: string;
   skills: string[];
   price: string;
@@ -20,36 +19,32 @@ export default function StartupServicesPage() {
     {
       id: 1,
       name: "TechNova Solutions",
-      logo: "🛠️",
       category: "Web Development",
       skills: ["React", "Next.js", "Firebase"],
       price: "₹5K - ₹25K",
       delivery: "7-14 Days",
       rating: 4.8,
-      description:
-        "We build scalable startup websites, dashboards and MVP platforms.",
+      description: "We build startup websites, dashboards and MVP products.",
     },
     {
       id: 2,
       name: "AI Cloud Labs",
-      logo: "🤖",
       category: "AI/ML Services",
-      skills: ["Python", "AI", "Cloud"],
+      skills: ["AI", "Python", "Cloud"],
       price: "₹10K - ₹50K",
       delivery: "15-30 Days",
       rating: 4.9,
-      description:
-        "AI automation, chatbot, prediction models and cloud deployment.",
+      description: "AI chatbots, automation, ML models and cloud deployment.",
     },
   ]);
 
-  const [requests, setRequests] = useState<any[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(
     null
   );
 
   const [form, setForm] = useState({
     startupName: "",
+    projectTitle: "",
     projectDetails: "",
     budget: "",
     deadline: "",
@@ -59,6 +54,7 @@ export default function StartupServicesPage() {
     if (
       !selectedProvider ||
       !form.startupName ||
+      !form.projectTitle ||
       !form.projectDetails ||
       !form.budget ||
       !form.deadline
@@ -67,23 +63,35 @@ export default function StartupServicesPage() {
       return;
     }
 
-    setRequests([
-      ...requests,
-      {
-        id: Date.now(),
-        providerId: selectedProvider.id,
-        providerName: selectedProvider.name,
-        ...form,
-        status: "Pending",
-      },
-    ]);
+    const oldRequests = JSON.parse(
+      localStorage.getItem("serviceProviderRequests") || "[]"
+    );
 
-    alert("Request sent to service provider ✅");
+    const newRequest = {
+      id: Date.now(),
+      providerId: selectedProvider.id,
+      providerName: selectedProvider.name,
+      startupName: form.startupName,
+      projectTitle: form.projectTitle,
+      projectDetails: form.projectDetails,
+      budget: form.budget,
+      deadline: form.deadline,
+      status: "Pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(
+      "serviceProviderRequests",
+      JSON.stringify([newRequest, ...oldRequests])
+    );
+
+    alert("Request sent to Service Provider ✅");
 
     setSelectedProvider(null);
 
     setForm({
       startupName: "",
+      projectTitle: "",
       projectDetails: "",
       budget: "",
       deadline: "",
@@ -91,22 +99,19 @@ export default function StartupServicesPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#eef4ff] p-8">
+    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] px-6 py-10">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-[35px] shadow-xl p-8 flex items-center justify-between">
+        <div className="rounded-[45px] bg-white/70 border border-white shadow-2xl p-10 flex items-center justify-between">
           <div>
-            <h1 className="text-5xl font-black text-[#071739]">
-              Startup Services 🛠️
-            </h1>
-
-            <p className="text-slate-500 mt-3 text-lg">
-              Find service providers and send project requests.
+            <h1 className="text-6xl font-black">Services 🛠️</h1>
+            <p className="text-xl text-slate-600 mt-4">
+              Find service providers and send startup project requests.
             </p>
           </div>
 
           <Link href="/dashboard">
-            <button className="bg-[#071739] text-white px-6 py-3 rounded-2xl font-bold">
-              Back
+            <button className="bg-[#07162b] text-white px-6 py-3 rounded-full font-bold">
+              Back Dashboard
             </button>
           </Link>
         </div>
@@ -115,29 +120,21 @@ export default function StartupServicesPage() {
           {providers.map((provider) => (
             <div
               key={provider.id}
-              className="bg-white rounded-[35px] shadow-xl p-8 border border-[#dbe4f0]"
+              className="bg-white rounded-[36px] shadow-xl p-8 border border-white hover:-translate-y-3 transition"
             >
-              <div className="flex items-start gap-5">
-                <div className="text-6xl">{provider.logo}</div>
+              <div className="text-7xl">🛠️</div>
 
-                <div>
-                  <h2 className="text-3xl font-black text-[#071739]">
-                    {provider.name}
-                  </h2>
+              <h2 className="text-4xl font-black mt-6">{provider.name}</h2>
 
-                  <p className="text-blue-600 font-bold mt-2">
-                    {provider.category}
-                  </p>
-
-                  <p className="text-yellow-500 font-black mt-2">
-                    ⭐ {provider.rating}
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-slate-600 mt-6 leading-relaxed">
-                {provider.description}
+              <p className="text-blue-600 font-bold mt-2">
+                {provider.category}
               </p>
+
+              <p className="text-yellow-500 font-black mt-2">
+                ⭐ {provider.rating}
+              </p>
+
+              <p className="text-slate-600 mt-5">{provider.description}</p>
 
               <div className="flex flex-wrap gap-3 mt-5">
                 {provider.skills.map((skill) => (
@@ -162,62 +159,21 @@ export default function StartupServicesPage() {
 
               <button
                 onClick={() => setSelectedProvider(provider)}
-                className="mt-8 w-full bg-[#071739] hover:bg-blue-700 transition text-white py-4 rounded-2xl font-black"
+                className="mt-8 w-full bg-[#07162b] text-white py-4 rounded-2xl font-black"
               >
                 Send Request
               </button>
             </div>
           ))}
         </div>
-
-        <div className="bg-white rounded-[35px] shadow-xl p-8 mt-10">
-          <h2 className="text-4xl font-black text-[#071739]">
-            My Service Requests 📩
-          </h2>
-
-          <div className="space-y-5 mt-8">
-            {requests.length === 0 && (
-              <p className="text-slate-500">No requests sent yet.</p>
-            )}
-
-            {requests.map((request) => (
-              <div
-                key={request.id}
-                className="border rounded-[25px] p-6 flex justify-between items-center"
-              >
-                <div>
-                  <h3 className="text-2xl font-black text-[#071739]">
-                    {request.providerName}
-                  </h3>
-
-                  <p className="text-slate-500 mt-2">
-                    {request.projectDetails}
-                  </p>
-
-                  <p className="text-green-600 font-bold mt-2">
-                    Budget: {request.budget}
-                  </p>
-                </div>
-
-                <span className="bg-yellow-100 text-yellow-700 px-5 py-2 rounded-full font-bold">
-                  {request.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {selectedProvider && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-6 z-50">
           <div className="bg-white rounded-[35px] shadow-2xl p-8 max-w-2xl w-full">
-            <h2 className="text-4xl font-black text-[#071739]">
-              Request Service
+            <h2 className="text-4xl font-black">
+              Request {selectedProvider.name}
             </h2>
-
-            <p className="text-slate-500 mt-2">
-              Send project request to {selectedProvider.name}
-            </p>
 
             <div className="space-y-4 mt-8">
               <input
@@ -225,10 +181,16 @@ export default function StartupServicesPage() {
                 className="input-box"
                 value={form.startupName}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    startupName: e.target.value,
-                  })
+                  setForm({ ...form, startupName: e.target.value })
+                }
+              />
+
+              <input
+                placeholder="Project Title"
+                className="input-box"
+                value={form.projectTitle}
+                onChange={(e) =>
+                  setForm({ ...form, projectTitle: e.target.value })
                 }
               />
 
@@ -237,10 +199,7 @@ export default function StartupServicesPage() {
                 className="input-box h-32"
                 value={form.projectDetails}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    projectDetails: e.target.value,
-                  })
+                  setForm({ ...form, projectDetails: e.target.value })
                 }
               />
 
@@ -248,12 +207,7 @@ export default function StartupServicesPage() {
                 placeholder="Budget"
                 className="input-box"
                 value={form.budget}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    budget: e.target.value,
-                  })
-                }
+                onChange={(e) => setForm({ ...form, budget: e.target.value })}
               />
 
               <input
@@ -261,10 +215,7 @@ export default function StartupServicesPage() {
                 className="input-box"
                 value={form.deadline}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    deadline: e.target.value,
-                  })
+                  setForm({ ...form, deadline: e.target.value })
                 }
               />
             </div>
@@ -272,7 +223,7 @@ export default function StartupServicesPage() {
             <div className="flex gap-4 mt-8">
               <button
                 onClick={sendRequest}
-                className="flex-1 bg-[#071739] text-white py-4 rounded-2xl font-black"
+                className="flex-1 bg-[#07162b] text-white py-4 rounded-2xl font-black"
               >
                 Send Request
               </button>
@@ -296,13 +247,6 @@ export default function StartupServicesPage() {
           padding: 16px 18px;
           border-radius: 18px;
           outline: none;
-          font-size: 15px;
-        }
-
-        .input-box:focus {
-          border-color: #2563eb;
-          background: white;
-          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
       `}</style>
     </main>

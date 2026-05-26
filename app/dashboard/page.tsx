@@ -37,23 +37,18 @@ export default function DashboardPage() {
       link: "/features/investors",
     },
     {
-      icon: "💡",
-      title: "Startup Ideas",
-      desc: "Share & discover ideas",
-      link: "/features/startup-ideas",
-    },
+  icon: "⚡",
+  title: "AI Accelerator",
+  desc: "Build, learn, and grow your startup using AI tools",
+  link: "/features/ai-accelerator",
+},
     {
-      icon: "🏆",
-      title: "Hackathon Portal",
-      desc: "Participate & win",
-      link: "/features/hackathons",
-    },
-    {
-      icon: "🧑‍💻",
-      title: "Skill Showcase",
-      desc: "Showcase your skills",
-      link: "/features/skill-showcase",
-    },
+  icon: "🏆",
+  title: "Competitions",
+  desc: "Explore and join startup competitions & hackathons",
+  link: "/features/competitions",
+},
+    
   ];
 
   return (
