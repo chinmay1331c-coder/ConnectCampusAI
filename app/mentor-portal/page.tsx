@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -32,45 +32,53 @@ type Message = {
   text: string;
 };
 
+type CallType = "audio" | "video";
+
 export default function MentorPortalPage() {
   const [activeTab, setActiveTab] = useState("requests");
   const [requests, setRequests] = useState<Request[]>([]);
-  const [filter, setFilter] = useState("all");
-  const [selectedChat, setSelectedChat] = useState<Request | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [filter, setFilter] = useState("all");
+
+  const [selectedChat, setSelectedChat] = useState<Request | null>(null);
   const [chatInput, setChatInput] = useState("");
 
+  const [callActive, setCallActive] = useState(false);
+  const [callType, setCallType] = useState<CallType>("audio");
+  const [callStatus, setCallStatus] = useState<"Calling" | "Ongoing" | "Ended">(
+    "Ended"
+  );
+  const [cameraOn, setCameraOn] = useState(true);
+  const [micOn, setMicOn] = useState(true);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   useEffect(() => {
-    const q = query(
-      collection(db, "mentorRequests"),
-      orderBy("createdAt", "desc")
-    );
+    const q = query(collection(db, "mentorRequests"), orderBy("createdAt", "desc"));
 
     const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      })) as Request[];
-
-      setRequests(data);
+      setRequests(
+        snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        })) as Request[]
+      );
     });
 
     return () => unsub();
   }, []);
 
   useEffect(() => {
-    const q = query(
-      collection(db, "mentorMessages"),
-      orderBy("createdAt", "asc")
-    );
+    const q = query(collection(db, "mentorMessages"), orderBy("createdAt", "asc"));
 
     const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      })) as Message[];
-
-      setMessages(data);
+      setMessages(
+        snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        })) as Message[]
+      );
     });
 
     return () => unsub();
@@ -81,6 +89,12 @@ export default function MentorPortalPage() {
     return requests.filter((item) => item.status === filter);
   }, [filter, requests]);
 
+  const acceptedRequests = requests.filter((item) => item.status === "accepted");
+
+  const chatMessages = selectedChat
+    ? messages.filter((msg) => msg.requestId === selectedChat.id)
+    : [];
+
   const updateRequest = async (
     id: string,
     status: "accepted" | "rejected"
@@ -90,16 +104,8 @@ export default function MentorPortalPage() {
     });
   };
 
-  const acceptedUsers = requests.filter(
-    (item) => item.status === "accepted"
-  );
-
-  const chatMessages = selectedChat
-    ? messages.filter((message) => message.requestId === selectedChat.id)
-    : [];
-
   const sendMessage = async () => {
-    if (!selectedChat || !chatInput) return;
+    if (!selectedChat || !chatInput.trim()) return;
 
     await addDoc(collection(db, "mentorMessages"), {
       requestId: selectedChat.id,
@@ -111,14 +117,80 @@ export default function MentorPortalPage() {
     setChatInput("");
   };
 
+  const startCall = async (request: Request, type: CallType) => {
+    setSelectedChat(request);
+    setCallType(type);
+    setCallActive(true);
+    setCallStatus("Calling");
+
+    await addDoc(collection(db, "mentorCalls"), {
+      requestId: request.id,
+      mentorName: request.mentorName,
+      startupName: request.startupName,
+      type,
+      status: "Calling",
+      startedBy: "mentor",
+      createdAt: serverTimestamp(),
+    });
+
+    setTimeout(async () => {
+      setCallStatus("Ongoing");
+
+      if (type === "video") {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+
+          streamRef.current = stream;
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch {
+          alert("Camera/Mic permission required for video call");
+        }
+      }
+    }, 1200);
+  };
+
+  const endCall = () => {
+    setCallStatus("Ended");
+    setCallActive(false);
+
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  };
+
+  const toggleCamera = () => {
+    const videoTrack = streamRef.current?.getVideoTracks()[0];
+
+    if (videoTrack) {
+      videoTrack.enabled = !cameraOn;
+      setCameraOn(!cameraOn);
+    }
+  };
+
+  const toggleMic = () => {
+    const audioTrack = streamRef.current?.getAudioTracks()[0];
+
+    if (audioTrack) {
+      audioTrack.enabled = !micOn;
+      setMicOn(!micOn);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] flex">
-      <aside className="w-[300px] bg-white border-r border-slate-200 p-6 flex flex-col">
+      <aside className="w-[300px] bg-white border-r border-slate-200 p-6">
         <h1 className="text-4xl font-black">Mentor Portal</h1>
-        <p className="text-slate-500 mt-2">Realtime request & chat system</p>
+        <p className="text-slate-500 mt-2">
+          Requests, chat, audio & video calls
+        </p>
 
         <div className="mt-10 space-y-3">
-          {["requests", "communication"].map((item) => (
+          {["requests", "active mentorships", "communication"].map((item) => (
             <button
               key={item}
               onClick={() => setActiveTab(item)}
@@ -137,18 +209,16 @@ export default function MentorPortalPage() {
           <>
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h1 className="text-5xl font-black">
-                  Mentorship Requests 📩
-                </h1>
+                <h1 className="text-5xl font-black">Mentorship Requests 📩</h1>
                 <p className="text-slate-500 mt-3">
-                  Requests from Startup Find Mentors page appear here instantly.
+                  Accept request to unlock chat, call and video call.
                 </p>
               </div>
 
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="bg-white border border-slate-200 rounded-2xl px-5 py-4 font-bold"
+                className="bg-white border rounded-2xl px-5 py-4 font-bold"
               >
                 <option value="all">All</option>
                 <option value="pending">Pending</option>
@@ -158,18 +228,12 @@ export default function MentorPortalPage() {
             </div>
 
             <div className="space-y-6">
-              {filteredRequests.length === 0 && (
-                <div className="bg-white rounded-[35px] shadow-xl p-10 text-center">
-                  <h2 className="text-3xl font-black">No requests yet.</h2>
-                </div>
-              )}
-
               {filteredRequests.map((request) => (
                 <div
                   key={request.id}
                   className="bg-white rounded-[35px] shadow-xl p-8"
                 >
-                  <div className="flex items-start justify-between gap-8">
+                  <div className="flex justify-between gap-8">
                     <div>
                       <h2 className="text-4xl font-black">
                         {request.startupName}
@@ -179,25 +243,12 @@ export default function MentorPortalPage() {
                         {request.startupBio}
                       </p>
 
-                      <div className="flex flex-wrap gap-3 mt-5">
-                        {request.startupSkills
-                          ?.split(",")
-                          .map((skill) => (
-                            <span
-                              key={skill}
-                              className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-bold"
-                            >
-                              {skill.trim()}
-                            </span>
-                          ))}
-                      </div>
-
-                      <p className="font-bold text-blue-700 mt-6">
+                      <p className="text-blue-600 font-bold mt-4">
                         Area: {request.area}
                       </p>
 
                       <p className="text-slate-600 mt-3">
-                        "{request.message}"
+                        “{request.message}”
                       </p>
                     </div>
 
@@ -217,18 +268,14 @@ export default function MentorPortalPage() {
                       {request.status === "pending" && (
                         <>
                           <button
-                            onClick={() =>
-                              updateRequest(request.id, "accepted")
-                            }
+                            onClick={() => updateRequest(request.id, "accepted")}
                             className="bg-green-600 text-white py-3 rounded-2xl font-black"
                           >
                             Accept
                           </button>
 
                           <button
-                            onClick={() =>
-                              updateRequest(request.id, "rejected")
-                            }
+                            onClick={() => updateRequest(request.id, "rejected")}
                             className="bg-red-600 text-white py-3 rounded-2xl font-black"
                           >
                             Reject
@@ -239,6 +286,64 @@ export default function MentorPortalPage() {
                   </div>
                 </div>
               ))}
+
+              {filteredRequests.length === 0 && (
+                <div className="bg-white rounded-[35px] p-10 text-center shadow-xl">
+                  <h2 className="text-3xl font-black">No requests found.</h2>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === "active mentorships" && (
+          <>
+            <h1 className="text-5xl font-black">Active Mentorships ✅</h1>
+            <p className="text-slate-500 text-xl mt-3">
+              Communication is enabled only for accepted requests.
+            </p>
+
+            <div className="grid lg:grid-cols-2 gap-8 mt-10">
+              {acceptedRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="bg-white rounded-[35px] p-8 shadow-xl"
+                >
+                  <h2 className="text-4xl font-black">{request.startupName}</h2>
+
+                  <p className="text-slate-600 mt-4">{request.startupBio}</p>
+
+                  <p className="text-blue-600 font-bold mt-4">
+                    Area: {request.area}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-4 mt-8">
+                    <button
+                      onClick={() => {
+                        setSelectedChat(request);
+                        setActiveTab("communication");
+                      }}
+                      className="bg-[#07162b] text-white py-4 rounded-2xl font-black"
+                    >
+                      💬 Chat
+                    </button>
+
+                    <button
+                      onClick={() => startCall(request, "audio")}
+                      className="bg-green-600 text-white py-4 rounded-2xl font-black"
+                    >
+                      📞 Call
+                    </button>
+
+                    <button
+                      onClick={() => startCall(request, "video")}
+                      className="bg-blue-600 text-white py-4 rounded-2xl font-black"
+                    >
+                      🎥 Video
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}
@@ -246,10 +351,10 @@ export default function MentorPortalPage() {
         {activeTab === "communication" && (
           <div className="grid grid-cols-[320px_1fr] gap-8 h-[85vh]">
             <div className="bg-white rounded-[35px] p-6 shadow-xl overflow-y-auto">
-              <h2 className="text-3xl font-black">Active Chats 💬</h2>
+              <h2 className="text-3xl font-black">Chats 💬</h2>
 
               <div className="space-y-4 mt-6">
-                {acceptedUsers.map((user) => (
+                {acceptedRequests.map((user) => (
                   <button
                     key={user.id}
                     onClick={() => setSelectedChat(user)}
@@ -269,11 +374,31 @@ export default function MentorPortalPage() {
             <div className="bg-white rounded-[35px] shadow-xl flex flex-col">
               {selectedChat ? (
                 <>
-                  <div className="border-b p-6">
-                    <h2 className="text-3xl font-black">
-                      {selectedChat.startupName}
-                    </h2>
-                    <p className="text-slate-500 mt-2">Realtime Chat</p>
+                  <div className="border-b p-6 flex justify-between items-center">
+                    <div>
+                      <h2 className="text-3xl font-black">
+                        {selectedChat.startupName}
+                      </h2>
+                      <p className="text-slate-500 mt-2">
+                        Real-time mentorship chat
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => startCall(selectedChat, "audio")}
+                        className="bg-green-600 text-white px-5 py-3 rounded-2xl font-black"
+                      >
+                        📞 Call
+                      </button>
+
+                      <button
+                        onClick={() => startCall(selectedChat, "video")}
+                        className="bg-blue-600 text-white px-5 py-3 rounded-2xl font-black"
+                      >
+                        🎥 Video
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -296,7 +421,7 @@ export default function MentorPortalPage() {
                       placeholder="Type message..."
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      className="flex-1 border border-slate-200 rounded-2xl px-5 py-4 outline-none"
+                      className="flex-1 border rounded-2xl px-5 py-4 outline-none"
                     />
 
                     <button
@@ -309,13 +434,71 @@ export default function MentorPortalPage() {
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-3xl font-black text-slate-400">
-                  Select Chat
+                  Select accepted mentorship
                 </div>
               )}
             </div>
           </div>
         )}
       </section>
+
+      {callActive && (
+        <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-6">
+          <div className="bg-white rounded-[35px] p-8 max-w-3xl w-full shadow-2xl">
+            <h2 className="text-5xl font-black">
+              {callType === "video" ? "🎥 Video Call" : "📞 Audio Call"}
+            </h2>
+
+            <p className="text-slate-500 mt-3 text-xl">
+              Status: {callStatus}
+            </p>
+
+            {callType === "video" ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-[360px] bg-black rounded-[25px] mt-8 object-cover"
+              />
+            ) : (
+              <div className="h-[280px] rounded-[25px] bg-[#f4f8ff] flex items-center justify-center mt-8">
+                <div className="text-center">
+                  <div className="text-8xl">📞</div>
+                  <h3 className="text-3xl font-black mt-5">
+                    Voice Session Ongoing
+                  </h3>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-4 mt-8">
+              {callType === "video" && (
+                <button
+                  onClick={toggleCamera}
+                  className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black"
+                >
+                  {cameraOn ? "Camera Off" : "Camera On"}
+                </button>
+              )}
+
+              <button
+                onClick={toggleMic}
+                className="flex-1 bg-yellow-500 text-white py-4 rounded-2xl font-black"
+              >
+                {micOn ? "Mic Off" : "Mic On"}
+              </button>
+
+              <button
+                onClick={endCall}
+                className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black"
+              >
+                End Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

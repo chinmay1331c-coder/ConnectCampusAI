@@ -1,9 +1,13 @@
-import type { Metadata } from "next";
+// app/layout.tsx
+
 import "./globals.css";
+import type { Metadata } from "next";
+import GlobalAIChatbot from "@/components/GlobalAIChatbot";
 
 export const metadata: Metadata = {
   title: "CampusConnectAI",
-  description: "Startup collaboration platform",
+  description:
+    "AI-powered startup collaboration platform",
 };
 
 export default function RootLayout({
@@ -12,8 +16,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+    <html lang="en">
+      <body className="bg-[#f4f8ff] text-[#07162b]">
+        {children}
+
+        {/* GLOBAL AI CHATBOT */}
+        <GlobalAIChatbot />
+      </body>
     </html>
   );
 }
