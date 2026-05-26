@@ -1,0 +1,19 @@
+
+> campusconnect-ai@0.1.0 build
+> next build
+
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+(node:68582) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/chinmayc/codethon-project/campusconnect-ai/postcss.config.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/chinmayc/codethon-project/campusconnect-ai/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✓ Compiled successfully in 2.1s
+  Running TypeScript ...
+Failed to type check.
+
+Type error: File '/Users/chinmayc/codethon-project/campusconnect-ai/app/features/team-match/page.tsx' is not a module.
+
+Next.js build worker exited with code: 1 and signal: null
