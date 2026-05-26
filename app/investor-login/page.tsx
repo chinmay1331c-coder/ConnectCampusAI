@@ -1,176 +1,281 @@
+// app/investor-login/page.tsx
+
 "use client";
 
+import { useState } from "react";
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
+
+import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
 export default function InvestorLoginPage() {
   const router = useRouter();
 
-  const login = () => {
-    router.push("/investor-onboarding");
+  const [loading, setLoading] =
+    useState(false);
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  const loginInvestor = async () => {
+    if (
+      !form.email ||
+      !form.password
+    ) {
+      alert("Fill all fields");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await signInWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password
+      );
+
+      localStorage.setItem(
+        "investorLoggedIn",
+        "true"
+      );
+
+      localStorage.setItem(
+        "userRole",
+        "investor"
+      );
+
+      router.push(
+        "/investor-onboarding"
+      );
+    } catch (error: any) {
+      alert(error.message);
+    }
+
+    setLoading(false);
   };
 
+  const loginWithGoogle =
+    async () => {
+      try {
+        const provider =
+          new GoogleAuthProvider();
+
+        await signInWithPopup(
+          auth,
+          provider
+        );
+
+        localStorage.setItem(
+          "investorLoggedIn",
+          "true"
+        );
+
+        localStorage.setItem(
+          "userRole",
+          "investor"
+        );
+
+        router.push(
+          "/investor-onboarding"
+        );
+      } catch (error: any) {
+        alert(error.message);
+      }
+    };
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-100 flex items-center justify-center px-6 overflow-hidden relative">
-      
-      {/* Background Glow */}
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-yellow-200/40 blur-[120px] rounded-full" />
+    <main className="min-h-screen bg-[#eef3fb] flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-7xl grid lg:grid-cols-2 gap-20 items-center">
+        {/* LEFT */}
 
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-orange-200/40 blur-[120px] rounded-full" />
-
-      <section className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        
-        {/* LEFT SIDE */}
         <div>
-          {/* Badge */}
-          <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-xl px-6 py-3 rounded-full shadow-lg border border-white/60 mb-8">
-            <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+          <div className="inline-flex items-center gap-3 bg-white shadow-lg px-5 py-3 rounded-full">
+            <div className="w-3 h-3 bg-green-500 rounded-full" />
 
-            <span className="text-sm font-bold text-slate-700">
+            <span className="font-semibold text-slate-600">
               Investor Access Portal
             </span>
           </div>
 
-          {/* Heading */}
-          <h1 className="text-6xl md:text-7xl font-black text-slate-950 leading-[0.9] mb-8">
-            Investor <br />
+          <h1 className="text-[90px] leading-[0.95] font-black text-[#07162b] mt-10">
+            Investor
+            <br />
             Login 💰
           </h1>
 
-          {/* Description */}
-          <p className="text-slate-600 text-2xl leading-relaxed max-w-xl">
-            Discover startups, track investments,
-            connect with founders and grow your portfolio
-            using AI-powered investment insights.
+          <p className="text-[20px] text-slate-600 mt-8 max-w-xl leading-relaxed">
+            Discover startups,
+            connect with founders,
+            manage investments and
+            grow your investor
+            network using AI-powered
+            tools.
           </p>
 
-          {/* Stats */}
-          <div className="flex gap-6 mt-12 flex-wrap">
-            <div className="bg-white/80 backdrop-blur-2xl rounded-[30px] shadow-2xl border border-white/60 p-8 w-44">
-              <h3 className="text-5xl font-black text-yellow-600">
-                ₹50Cr+
-              </h3>
+          {/* STATS */}
 
-              <p className="font-bold text-slate-600 mt-3">
-                Investments
-              </p>
-            </div>
+          <div className="flex gap-6 mt-16 flex-wrap">
+            <div className="bg-white rounded-[30px] shadow-xl w-[170px] h-[170px] flex flex-col justify-center px-8">
+              <h2 className="text-4xl font-black text-blue-600">
+                1000+
+              </h2>
 
-            <div className="bg-white/80 backdrop-blur-2xl rounded-[30px] shadow-2xl border border-white/60 p-8 w-44">
-              <h3 className="text-5xl font-black text-orange-600">
-                500+
-              </h3>
-
-              <p className="font-bold text-slate-600 mt-3">
+              <p className="text-slate-600 font-bold mt-3">
                 Startups
               </p>
             </div>
+
+            <div className="bg-white rounded-[30px] shadow-xl w-[170px] h-[170px] flex flex-col justify-center px-8">
+              <h2 className="text-4xl font-black text-blue-600">
+                500+
+              </h2>
+
+              <p className="text-slate-600 font-bold mt-3">
+                Investors
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* RIGHT SIDE */}
-        <div className="bg-white/80 backdrop-blur-3xl rounded-[40px] shadow-2xl border border-white/70 p-10">
-          
-          {/* Icon */}
-          <div className="w-20 h-20 rounded-[28px] bg-yellow-100 shadow-lg flex items-center justify-center text-4xl mb-7">
-            💰
+        {/* RIGHT */}
+
+        <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-[500px] w-full">
+          {/* HEADER */}
+
+          <div className="flex items-start gap-5">
+            <div className="w-20 h-20 bg-[#dbe7fb] rounded-[24px] flex items-center justify-center text-4xl shadow-lg">
+              💰
+            </div>
+
+            <div>
+              <h2 className="text-6xl leading-[0.9] font-black text-[#07162b]">
+                Welcome
+                <br />
+                Back
+              </h2>
+
+              <p className="text-slate-500 mt-4 text-lg">
+                Login to continue
+              </p>
+            </div>
           </div>
 
-          {/* Title */}
-          <h2 className="text-5xl font-black text-slate-950 leading-none mb-3">
-            Welcome <br />
-            Back
-          </h2>
+          {/* FORM */}
 
-          <p className="text-slate-500 font-medium mb-8">
-            Login to continue
-          </p>
+          <div className="mt-10 space-y-6">
+            <div>
+              <label className="font-bold text-[#07162b] block mb-3">
+                Investor Email
+              </label>
 
-          {/* Email */}
-          <label className="block text-slate-700 font-bold mb-3">
-            Investor Email
-          </label>
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="input-box"
+                value={form.email}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    email:
+                      e.target.value,
+                  })
+                }
+              />
+            </div>
 
-          <input
-            type="email"
-            placeholder="Enter your email"
-            className="w-full h-16 rounded-2xl border border-slate-200 bg-white/90 px-6 mb-6 outline-none text-slate-800 shadow-sm focus:ring-4 focus:ring-yellow-200"
-          />
+            <div>
+              <label className="font-bold text-[#07162b] block mb-3">
+                Password
+              </label>
 
-          {/* Password */}
-          <label className="block text-slate-700 font-bold mb-3">
-            Password
-          </label>
-
-          <input
-            type="password"
-            placeholder="Enter password"
-            className="w-full h-16 rounded-2xl border border-slate-200 bg-white/90 px-6 mb-8 outline-none text-slate-800 shadow-sm focus:ring-4 focus:ring-yellow-200"
-          />
-
-          {/* Buttons */}
-          <div className="space-y-5">
-            
-            {/* Login */}
-            <button
-              onClick={login}
-              className="w-full h-16 rounded-2xl bg-slate-950 text-white font-black text-lg shadow-xl hover:scale-[1.02] transition-all duration-300"
-            >
-              Login →
-            </button>
-
-            {/* Google */}
-            <button
-              onClick={login}
-              className="w-full h-16 rounded-2xl bg-white text-slate-950 font-black text-lg shadow-xl hover:scale-[1.02] transition-all duration-300 border border-slate-200 flex items-center justify-center gap-4"
-            >
-              <GoogleLogo />
-
-              Login with Google
-            </button>
+              <input
+                type="password"
+                placeholder="Enter password"
+                className="input-box"
+                value={form.password}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    password:
+                      e.target.value,
+                  })
+                }
+              />
+            </div>
           </div>
 
-          {/* Footer */}
-          <p className="text-center text-slate-500 mt-8">
-            New Investor?{" "}
-            <span
-              onClick={() => router.push("/signup")}
-              className="text-yellow-600 font-black cursor-pointer hover:underline"
+          {/* LOGIN */}
+
+          <button
+            onClick={loginInvestor}
+            disabled={loading}
+            className="w-full mt-8 bg-[#031634] hover:bg-[#071d42] text-white py-5 rounded-[22px] text-2xl font-black shadow-xl transition-all"
+          >
+            {loading
+              ? "Logging in..."
+              : "Login ➜"}
+          </button>
+
+          {/* GOOGLE */}
+
+          <button
+            onClick={loginWithGoogle}
+            className="w-full mt-5 bg-white border border-slate-200 py-5 rounded-[22px] text-2xl font-black shadow-lg flex items-center justify-center gap-4"
+          >
+            <img
+              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+              alt="google"
+              className="w-8 h-8"
+            />
+
+            Login with Google
+          </button>
+
+          {/* FOOTER */}
+
+          <div className="text-center mt-10">
+            <span className="text-slate-500 text-lg">
+              New Investor?
+            </span>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/investor-signup"
+                )
+              }
+              className="text-blue-600 font-black ml-2 text-lg"
             >
               Create Account
-            </span>
-          </p>
+            </button>
+          </div>
         </div>
-      </section>
+      </div>
+
+      <style jsx global>{`
+        .input-box {
+          width: 100%;
+          height: 72px;
+          border-radius: 22px;
+          border: 1px solid #dbe4f0;
+          background: #f8fbff;
+          padding: 0 22px;
+          font-size: 18px;
+          outline: none;
+        }
+
+        .input-box:focus {
+          border-color: #2563eb;
+          background: white;
+        }
+      `}</style>
     </main>
-  );
-}
-
-function GoogleLogo() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 48 48"
-      className="w-7 h-7"
-    >
-      <path
-        fill="#FFC107"
-        d="M43.611 20.083H42V20H24v8h11.303C33.651 32.657 29.24 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.27 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
-      />
-
-      <path
-        fill="#FF3D00"
-        d="M6.306 14.691l6.571 4.819C14.655 16.108 19.001 13 24 13c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.27 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"
-      />
-
-      <path
-        fill="#4CAF50"
-        d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.219 0-9.617-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"
-      />
-
-      <path
-        fill="#1976D2"
-        d="M43.611 20.083H42V20H24v8h11.303c-1.058 3.057-3.287 5.477-6.084 6.57l.003-.002 6.19 5.238C33.971 41.091 44 36 44 24c0-1.341-.138-2.65-.389-3.917z"
-      />
-    </svg>
   );
 }

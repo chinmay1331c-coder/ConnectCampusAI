@@ -1,18 +1,26 @@
+// app/features/ai-accelerator/page.tsx
+
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+
+import { db } from "@/lib/firebase";
 
 type Course = {
-  id: number;
+  id: string;
   title: string;
   description: string;
   thumbnail: string;
-  rating: number;
   duration: string;
-  category: string;
-  video: string;
-  outcomes: string[];
+  rating: string;
+  about?: string;
+  video?: string;
 };
 
 export default function AIAcceleratorPage() {
@@ -20,604 +28,802 @@ export default function AIAcceleratorPage() {
   // IDEA GENERATOR
   // =========================
 
-  const [ideaInput, setIdeaInput] = useState({
-    domain: "",
-    problem: "",
-    interests: "",
-  });
+  const [loadingIdea, setLoadingIdea] =
+    useState(false);
 
-  const [ideaResult, setIdeaResult] = useState<any>(null);
+  const [generatedIdea, setGeneratedIdea] =
+    useState<any>(null);
 
-  const generateIdea = () => {
-    if (
-      !ideaInput.domain ||
-      !ideaInput.problem ||
-      !ideaInput.interests
-    ) {
-      alert("Fill all fields");
-      return;
-    }
-
-    setIdeaResult({
-      name: `${ideaInput.domain}X AI`,
-      description: `An AI-powered startup solving ${ideaInput.problem} using smart automation and analytics.`,
-      users: "Students, startups and businesses",
-      uvp: "AI-driven platform with automation, insights and scalable workflows.",
+  const [ideaForm, setIdeaForm] =
+    useState({
+      domain: "",
+      problem: "",
+      audience: "",
+      budget: "",
+      stage: "",
     });
-  };
 
   // =========================
   // INVESTOR MEMO
   // =========================
 
-  const [memoInput, setMemoInput] = useState({
-    startup: "",
-    problem: "",
-    solution: "",
-    market: "",
-    revenue: "",
-  });
+  const [memoLoading, setMemoLoading] =
+    useState(false);
 
-  const [memo, setMemo] = useState<any>(null);
+  const [generatedMemo, setGeneratedMemo] =
+    useState<any>(null);
 
-  const generateMemo = () => {
-    if (
-      !memoInput.startup ||
-      !memoInput.problem ||
-      !memoInput.solution ||
-      !memoInput.market ||
-      !memoInput.revenue
-    ) {
-      alert("Fill all fields");
-      return;
+  const [memoForm, setMemoForm] =
+    useState({
+      startupName: "",
+      domain: "",
+      problem: "",
+      solution: "",
+      market: "",
+      businessModel: "",
+      revenue: "",
+      team: "",
+      funding: "",
+    });
+
+  // =========================
+  // QUIZ
+  // =========================
+
+  const [quizLoading, setQuizLoading] =
+    useState(false);
+
+  const [quizData, setQuizData] =
+    useState<any>(null);
+
+  const [currentQuestion, setCurrentQuestion] =
+    useState(0);
+
+  const [practiceAnswer, setPracticeAnswer] =
+    useState("");
+
+  const [aiFeedback, setAiFeedback] =
+    useState("");
+
+  const [practiceMode, setPracticeMode] =
+    useState(false);
+
+  const [quizForm, setQuizForm] =
+    useState({
+      topic: "",
+      domain: "",
+      difficulty: "",
+      description: "",
+    });
+
+  // =========================
+  // STUDY PARTNER
+  // =========================
+
+  const [studyLoading, setStudyLoading] =
+    useState(false);
+
+  const [studyResponse, setStudyResponse] =
+    useState<any>(null);
+
+  const [studyForm, setStudyForm] =
+    useState({
+      question: "",
+      interest: "",
+      level: "",
+      goal: "",
+    });
+
+  // =========================
+  // COURSES
+  // =========================
+
+  const [courses, setCourses] =
+    useState<Course[]>([]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "courses"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map(
+          (doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })
+        ) as Course[];
+
+        setCourses(data);
+      }
+    );
+
+    return () => unsub();
+  }, []);
+
+  // =========================
+  // IDEA GENERATOR
+  // =========================
+
+  const generateIdea = async () => {
+    setLoadingIdea(true);
+
+    try {
+      const response = await fetch(
+        "/api/ai-idea",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify(
+            ideaForm
+          ),
+        }
+      );
+
+      const data =
+        await response.json();
+
+      setGeneratedIdea(data);
+    } catch (error) {
+      console.log(error);
     }
 
-    setMemo({
-      problem: memoInput.problem,
-      solution: memoInput.solution,
-      market: memoInput.market,
-      model: memoInput.revenue,
-      vision: `To become a leading AI-powered startup in ${memoInput.market}.`,
+    setLoadingIdea(false);
+  };
+
+  // =========================
+  // MEMO GENERATOR
+  // =========================
+
+  const generateInvestorMemo =
+    async () => {
+      setMemoLoading(true);
+
+      try {
+        const response = await fetch(
+          "/api/ai-investor-memo",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify(
+              memoForm
+            ),
+          }
+        );
+
+        const data =
+          await response.json();
+
+        setGeneratedMemo(data);
+      } catch (error) {
+        console.log(error);
+      }
+
+      setMemoLoading(false);
+    };
+
+  // =========================
+  // QUIZ GENERATOR
+  // =========================
+
+  const generateQuiz =
+    async () => {
+      setQuizLoading(true);
+
+      try {
+        const response = await fetch(
+          "/api/ai-quiz",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify(
+              quizForm
+            ),
+          }
+        );
+
+        const data =
+          await response.json();
+
+        setQuizData(data);
+
+        setCurrentQuestion(0);
+
+        setPracticeAnswer("");
+
+        setAiFeedback("");
+      } catch (error) {
+        console.log(error);
+      }
+
+      setQuizLoading(false);
+    };
+
+  const evaluateAnswer = () => {
+    if (!practiceAnswer) return;
+
+    let feedback =
+      "Good answer. ";
+
+    if (
+      practiceAnswer.length < 50
+    ) {
+      feedback +=
+        "Add more detail and market validation.";
+    } else {
+      feedback +=
+        "Strong response with good clarity.";
+    }
+
+    setAiFeedback(feedback);
+  };
+
+  const nextQuestion = () => {
+    if (
+      currentQuestion <
+      quizData.questions.length -
+        1
+    ) {
+      setCurrentQuestion(
+        currentQuestion + 1
+      );
+
+      setPracticeAnswer("");
+
+      setAiFeedback("");
+    }
+  };
+
+  // =========================
+  // STUDY PARTNER
+  // =========================
+
+  const askStudyPartner =
+    async () => {
+      setStudyLoading(true);
+
+      try {
+        const response = await fetch(
+          "/api/ai-study-partner",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify(
+              studyForm
+            ),
+          }
+        );
+
+        const data =
+          await response.json();
+
+        setStudyResponse(data);
+      } catch (error) {
+        console.log(error);
+      }
+
+      setStudyLoading(false);
+    };
+
+  const quickPrompt = (
+    text: string
+  ) => {
+    setStudyForm({
+      ...studyForm,
+      question: text,
     });
   };
 
-  // =========================
-  // PITCH PRACTICE
-  // =========================
-
-  const practiceQuestions = [
-    "What problem are you solving?",
-    "Who are your target users?",
-    "What is your revenue model?",
-    "Why now?",
-    "How are you different from competitors?",
-  ];
-
-  // =========================
-  // COURSE ASSISTANT
-  // =========================
-
-  const [courseInput, setCourseInput] = useState({
-    interest: "",
-    level: "",
-    goal: "",
-  });
-
-  const [recommendations, setRecommendations] = useState<string[]>([]);
-
-  const recommendCourses = () => {
-    const interest =
-      courseInput.interest.toLowerCase();
-
-    if (interest.includes("ai")) {
-      setRecommendations([
-        "Intro to AI",
-        "Machine Learning Basics",
-        "AI Product Building",
-      ]);
-
-      return;
-    }
-
-    if (interest.includes("business")) {
-      setRecommendations([
-        "Startup Growth",
-        "Business Fundamentals",
-        "Investor Pitching",
-      ]);
-
-      return;
-    }
-
-    setRecommendations([
-      "Startup Fundamentals",
-      "MVP Building",
-      "Growth Strategy",
-    ]);
-  };
-
-  // =========================
-  // ORGANIZER COURSES
-  // =========================
-
-  const courses = useMemo(() => {
-    if (typeof window === "undefined") return [];
-
-    const organizerCourses = JSON.parse(
-      localStorage.getItem("organizerCourses") || "[]"
-    );
-
-    if (organizerCourses.length > 0) {
-      return organizerCourses;
-    }
-
-    return [
-      {
-        id: 1,
-        title: "Intro to AI",
-        description:
-          "Learn AI fundamentals and startup AI integration.",
-        thumbnail: "🤖",
-        rating: 4.8,
-        duration: "6 Weeks",
-        category: "AI",
-        video: "https://www.youtube.com/embed/2ePf9rue1Ao",
-        outcomes: [
-          "Understand AI basics",
-          "Learn ML workflows",
-          "Build AI startup ideas",
-        ],
-      },
-
-      {
-        id: 2,
-        title: "Startup Pitch Mastery",
-        description:
-          "Create investor-ready pitch decks and business strategies.",
-        thumbnail: "🚀",
-        rating: 4.7,
-        duration: "4 Weeks",
-        category: "Business",
-        video: "https://www.youtube.com/embed/8S0FDjFBj8o",
-        outcomes: [
-          "Pitch confidently",
-          "Understand VC expectations",
-          "Build investor memos",
-        ],
-      },
-    ];
-  }, []);
-
-  const [selectedCourse, setSelectedCourse] =
-    useState<Course | null>(null);
-
   return (
-    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] px-6 py-10 relative overflow-hidden">
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.25),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.18),transparent_30%)]" />
+    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] p-8">
+      <div className="max-w-7xl mx-auto space-y-10">
+        {/* HERO */}
 
-      <div className="relative z-10 max-w-7xl mx-auto">
-        {/* HEADER */}
+        <div className="glass-card">
+          <h1 className="text-6xl font-black">
+            AI Accelerator ⚡
+          </h1>
 
-        <div className="rounded-[45px] bg-white/70 border border-white shadow-2xl p-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-6xl font-black">
-              AI Accelerator ⚡
-            </h1>
-
-            <p className="text-xl text-slate-600 mt-5">
-              Build, learn and grow your startup using AI tools and courses.
-            </p>
-          </div>
-
-          <Link href="/dashboard">
-            <button className="bg-[#07162b] text-white px-6 py-3 rounded-full font-bold">
-              Back Dashboard
-            </button>
-          </Link>
+          <p className="text-slate-500 text-xl mt-4">
+            Build, learn, and grow
+            your startup using AI.
+          </p>
         </div>
 
-        {/* TOOLS */}
+        {/* IDEA GENERATOR */}
 
-        <div className="grid lg:grid-cols-2 gap-8 mt-10">
-          {/* IDEA */}
+        <div className="glass-card">
+          <h2 className="title">
+            🚀 AI Startup Idea
+            Generator
+          </h2>
 
-          <div className="glass-card">
-            <h2 className="tool-title">
-              🚀 Startup Idea Generator
-            </h2>
+          <div className="grid lg:grid-cols-2 gap-5 mt-8">
+            <input
+              placeholder="Domain"
+              className="input-box"
+              value={ideaForm.domain}
+              onChange={(e) =>
+                setIdeaForm({
+                  ...ideaForm,
+                  domain:
+                    e.target.value,
+                })
+              }
+            />
 
-            <div className="space-y-4 mt-6">
-              <input
-                placeholder="Domain"
-                className="input-box"
-                value={ideaInput.domain}
-                onChange={(e) =>
-                  setIdeaInput({
-                    ...ideaInput,
-                    domain: e.target.value,
-                  })
-                }
-              />
+            <input
+              placeholder="Target Audience"
+              className="input-box"
+              value={ideaForm.audience}
+              onChange={(e) =>
+                setIdeaForm({
+                  ...ideaForm,
+                  audience:
+                    e.target.value,
+                })
+              }
+            />
 
-              <input
-                placeholder="Problem Area"
-                className="input-box"
-                value={ideaInput.problem}
-                onChange={(e) =>
-                  setIdeaInput({
-                    ...ideaInput,
-                    problem: e.target.value,
-                  })
-                }
-              />
-
-              <input
-                placeholder="Interests"
-                className="input-box"
-                value={ideaInput.interests}
-                onChange={(e) =>
-                  setIdeaInput({
-                    ...ideaInput,
-                    interests: e.target.value,
-                  })
-                }
-              />
-
-              <button
-                onClick={generateIdea}
-                className="primary-btn"
-              >
-                Generate Idea
-              </button>
-            </div>
-
-            {ideaResult && (
-              <div className="result-box">
-                <h3 className="text-3xl font-black">
-                  {ideaResult.name}
-                </h3>
-
-                <p className="mt-4">
-                  {ideaResult.description}
-                </p>
-
-                <p className="mt-4">
-                  <b>Target Users:</b>{" "}
-                  {ideaResult.users}
-                </p>
-
-                <p className="mt-4">
-                  <b>UVP:</b>{" "}
-                  {ideaResult.uvp}
-                </p>
-              </div>
-            )}
+            <textarea
+              placeholder="Problem"
+              className="input-box h-32 lg:col-span-2"
+              value={ideaForm.problem}
+              onChange={(e) =>
+                setIdeaForm({
+                  ...ideaForm,
+                  problem:
+                    e.target.value,
+                })
+              }
+            />
           </div>
 
-          {/* INVESTOR MEMO */}
+          <button
+            onClick={generateIdea}
+            className="primary-btn mt-8"
+          >
+            Generate Idea ⚡
+          </button>
 
-          <div className="glass-card">
-            <h2 className="tool-title">
-              💰 Investor Memo Generator
-            </h2>
+          {loadingIdea && (
+            <div className="mt-8 animate-pulse font-black text-2xl">
+              AI generating idea...
+            </div>
+          )}
 
-            <div className="space-y-4 mt-6">
-              {[
-                ["Startup Name", "startup"],
-                ["Problem", "problem"],
-                ["Solution", "solution"],
-                ["Market", "market"],
-                ["Revenue Model", "revenue"],
-              ].map(([placeholder, key]) => (
-                <input
-                  key={key}
-                  placeholder={placeholder}
-                  className="input-box"
-                  value={(memoInput as any)[key]}
+          {generatedIdea && (
+            <div className="grid lg:grid-cols-2 gap-6 mt-10">
+              <div className="result-card">
+                <h3>
+                  🚀 Startup Name
+                </h3>
+
+                <p>
+                  {
+                    generatedIdea.startupName
+                  }
+                </p>
+              </div>
+
+              <div className="result-card">
+                <h3>
+                  💡 Description
+                </h3>
+
+                <p>
+                  {
+                    generatedIdea.description
+                  }
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* INVESTOR MEMO */}
+
+        <div className="glass-card">
+          <h2 className="title">
+            💰 AI Investor Memo
+            Generator
+          </h2>
+
+          <div className="grid lg:grid-cols-2 gap-5 mt-8">
+            <input
+              placeholder="Startup Name"
+              className="input-box"
+              value={
+                memoForm.startupName
+              }
+              onChange={(e) =>
+                setMemoForm({
+                  ...memoForm,
+                  startupName:
+                    e.target.value,
+                })
+              }
+            />
+
+            <input
+              placeholder="Domain"
+              className="input-box"
+              value={memoForm.domain}
+              onChange={(e) =>
+                setMemoForm({
+                  ...memoForm,
+                  domain:
+                    e.target.value,
+                })
+              }
+            />
+
+            <textarea
+              placeholder="Problem"
+              className="input-box h-32"
+              value={memoForm.problem}
+              onChange={(e) =>
+                setMemoForm({
+                  ...memoForm,
+                  problem:
+                    e.target.value,
+                })
+              }
+            />
+
+            <textarea
+              placeholder="Solution"
+              className="input-box h-32"
+              value={memoForm.solution}
+              onChange={(e) =>
+                setMemoForm({
+                  ...memoForm,
+                  solution:
+                    e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <button
+            onClick={
+              generateInvestorMemo
+            }
+            className="primary-btn mt-8"
+          >
+            Generate Memo ⚡
+          </button>
+
+          {memoLoading && (
+            <div className="mt-8 animate-pulse font-black text-2xl">
+              AI generating memo...
+            </div>
+          )}
+
+          {generatedMemo && (
+            <div className="space-y-6 mt-10">
+              <div className="result-card">
+                <h3>
+                  📌 Executive Summary
+                </h3>
+
+                <p>
+                  {
+                    generatedMemo.executiveSummary
+                  }
+                </p>
+              </div>
+
+              <div className="result-card">
+                <h3>💰 Funding</h3>
+
+                <p>
+                  {
+                    generatedMemo.fundingAsk
+                  }
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* QUIZ */}
+
+        <div className="glass-card">
+          <h2 className="title">
+            🎤 AI Interview Practice
+          </h2>
+
+          <div className="grid lg:grid-cols-2 gap-5 mt-8">
+            <input
+              placeholder="Topic"
+              className="input-box"
+              value={quizForm.topic}
+              onChange={(e) =>
+                setQuizForm({
+                  ...quizForm,
+                  topic:
+                    e.target.value,
+                })
+              }
+            />
+
+            <input
+              placeholder="Domain"
+              className="input-box"
+              value={quizForm.domain}
+              onChange={(e) =>
+                setQuizForm({
+                  ...quizForm,
+                  domain:
+                    e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <button
+            onClick={generateQuiz}
+            className="primary-btn mt-8"
+          >
+            Start Practice ⚡
+          </button>
+
+          {quizLoading && (
+            <div className="mt-8 animate-pulse font-black text-2xl">
+              AI generating questions...
+            </div>
+          )}
+
+          {quizData && (
+            <div className="mt-10">
+              <div className="result-card">
+                <h3>
+                  ❓{" "}
+                  {
+                    quizData.questions[
+                      currentQuestion
+                    ].question
+                  }
+                </h3>
+
+                <textarea
+                  placeholder="Type answer..."
+                  className="input-box h-40 mt-6"
+                  value={
+                    practiceAnswer
+                  }
                   onChange={(e) =>
-                    setMemoInput({
-                      ...memoInput,
-                      [key]: e.target.value,
-                    })
+                    setPracticeAnswer(
+                      e.target.value
+                    )
                   }
                 />
-              ))}
 
-              <button
-                onClick={generateMemo}
-                className="primary-btn"
-              >
-                Generate Memo
-              </button>
-            </div>
+                <div className="flex gap-4 mt-6">
+                  <button
+                    onClick={
+                      evaluateAnswer
+                    }
+                    className="primary-btn"
+                  >
+                    Evaluate
+                  </button>
 
-            {memo && (
-              <div className="result-box">
-                <p>
-                  <b>Problem:</b>{" "}
-                  {memo.problem}
-                </p>
+                  <button
+                    onClick={
+                      nextQuestion
+                    }
+                    className="secondary-btn"
+                  >
+                    Next
+                  </button>
+                </div>
 
-                <p className="mt-4">
-                  <b>Solution:</b>{" "}
-                  {memo.solution}
-                </p>
+                {aiFeedback && (
+                  <div className="mt-8 bg-blue-50 border border-blue-200 rounded-3xl p-6">
+                    <h4 className="font-black text-2xl">
+                      🤖 AI Feedback
+                    </h4>
 
-                <p className="mt-4">
-                  <b>Market:</b>{" "}
-                  {memo.market}
-                </p>
-
-                <p className="mt-4">
-                  <b>Business Model:</b>{" "}
-                  {memo.model}
-                </p>
-
-                <p className="mt-4">
-                  <b>Vision:</b>{" "}
-                  {memo.vision}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* PRACTICE */}
-
-          <div className="glass-card">
-            <h2 className="tool-title">
-              🎤 Pitch & Interview Practice
-            </h2>
-
-            <div className="space-y-4 mt-6">
-              {practiceQuestions.map((q) => (
-                <div
-                  key={q}
-                  className="bg-[#f4f8ff] rounded-[22px] p-5"
-                >
-                  <h3 className="font-black text-xl">
-                    {q}
-                  </h3>
-
-                  <textarea
-                    placeholder="Practice your answer..."
-                    className="input-box h-28 mt-4"
-                  />
-
-                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mt-4">
-                    <p className="font-bold text-blue-700">
-                      Sample Answer:
-                    </p>
-
-                    <p className="text-slate-600 mt-2">
-                      Clearly explain the startup problem, market need and why your solution is unique.
+                    <p className="mt-4">
+                      {aiFeedback}
                     </p>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
+          )}
+        </div>
+
+        {/* STUDY PARTNER */}
+
+        <div className="glass-card">
+          <h2 className="title">
+            📚 AI Course Assistant
+          </h2>
+
+          <div className="flex gap-4 flex-wrap mt-8">
+            <button
+              onClick={() =>
+                quickPrompt(
+                  "Explain AI basics"
+                )
+              }
+              className="quick-btn"
+            >
+              Learn AI Basics
+            </button>
+
+            <button
+              onClick={() =>
+                quickPrompt(
+                  "Recommend React courses"
+                )
+              }
+              className="quick-btn"
+            >
+              Recommend Courses
+            </button>
           </div>
 
-          {/* COURSE ASSISTANT */}
+          <div className="grid lg:grid-cols-2 gap-5 mt-8">
+            <input
+              placeholder="Ask question..."
+              className="input-box"
+              value={
+                studyForm.question
+              }
+              onChange={(e) =>
+                setStudyForm({
+                  ...studyForm,
+                  question:
+                    e.target.value,
+                })
+              }
+            />
 
-          <div className="glass-card">
-            <h2 className="tool-title">
-              🎓 Smart Course Assistant
-            </h2>
+            <input
+              placeholder="Interest"
+              className="input-box"
+              value={
+                studyForm.interest
+              }
+              onChange={(e) =>
+                setStudyForm({
+                  ...studyForm,
+                  interest:
+                    e.target.value,
+                })
+              }
+            />
+          </div>
 
-            <div className="space-y-4 mt-6">
-              <input
-                placeholder="Interest"
-                className="input-box"
-                value={courseInput.interest}
-                onChange={(e) =>
-                  setCourseInput({
-                    ...courseInput,
-                    interest: e.target.value,
-                  })
-                }
-              />
+          <button
+            onClick={
+              askStudyPartner
+            }
+            className="primary-btn mt-8"
+          >
+            Ask AI Tutor ⚡
+          </button>
 
-              <select
-                className="input-box"
-                value={courseInput.level}
-                onChange={(e) =>
-                  setCourseInput({
-                    ...courseInput,
-                    level: e.target.value,
-                  })
-                }
-              >
-                <option value="">
-                  Select Skill Level
-                </option>
-
-                <option>
-                  Beginner
-                </option>
-
-                <option>
-                  Intermediate
-                </option>
-
-                <option>
-                  Advanced
-                </option>
-              </select>
-
-              <input
-                placeholder="Goal"
-                className="input-box"
-                value={courseInput.goal}
-                onChange={(e) =>
-                  setCourseInput({
-                    ...courseInput,
-                    goal: e.target.value,
-                  })
-                }
-              />
-
-              <button
-                onClick={recommendCourses}
-                className="primary-btn"
-              >
-                Generate Learning Path
-              </button>
+          {studyLoading && (
+            <div className="mt-8 animate-pulse font-black text-2xl">
+              AI Tutor thinking...
             </div>
+          )}
 
-            {recommendations.length > 0 && (
-              <div className="result-box">
-                <h3 className="text-2xl font-black">
-                  Recommended Courses
+          {studyResponse && (
+            <div className="space-y-6 mt-10">
+              <div className="result-card">
+                <h3>
+                  📖 Explanation
                 </h3>
 
-                <div className="space-y-3 mt-5">
-                  {recommendations.map(
-                    (item) => (
+                <p>
+                  {
+                    studyResponse.explanation
+                  }
+                </p>
+              </div>
+
+              <div className="result-card">
+                <h3>
+                  🎓 Recommended
+                  Courses
+                </h3>
+
+                <div className="grid lg:grid-cols-2 gap-4 mt-5">
+                  {studyResponse.recommendedCourses.map(
+                    (
+                      course: string,
+                      index: number
+                    ) => (
                       <div
-                        key={item}
-                        className="bg-white rounded-2xl p-4 border"
+                        key={index}
+                        className="bg-white rounded-2xl p-5 font-black"
                       >
-                        {item}
+                        🎥 {course}
                       </div>
                     )
                   )}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* COURSES */}
 
-        <div className="mt-16">
-          <h2 className="text-5xl font-black">
-            Learning Hub 🎓
+        <div className="glass-card">
+          <h2 className="title">
+            🎓 Learning Hub
           </h2>
 
-          <p className="text-slate-600 text-xl mt-4">
-            Courses uploaded by organizers are displayed here automatically.
-          </p>
-
           <div className="grid lg:grid-cols-2 gap-8 mt-10">
-            {courses.map((course: Course) => (
+            {courses.map((course) => (
               <div
                 key={course.id}
-                className="glass-card"
+                className="bg-white rounded-[30px] border border-[#dbe4f0] p-6"
               >
                 <div className="text-7xl">
                   {course.thumbnail}
                 </div>
 
-                <h2 className="text-4xl font-black mt-6">
+                <h3 className="text-3xl font-black mt-5">
                   {course.title}
-                </h2>
+                </h3>
 
                 <p className="text-slate-600 mt-4">
-                  {course.description}
+                  {
+                    course.description
+                  }
                 </p>
 
-                <div className="flex gap-4 mt-6">
-                  <span className="tag-blue">
-                    ⭐ {course.rating}
-                  </span>
+                <div className="flex gap-4 mt-6 flex-wrap">
+                  <div className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-bold">
+                    ⭐{" "}
+                    {course.rating}
+                  </div>
 
-                  <span className="tag-green">
-                    ⏱️ {course.duration}
-                  </span>
-
-                  <span className="tag-orange">
-                    {course.category}
-                  </span>
+                  <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold">
+                    ⏱️{" "}
+                    {course.duration}
+                  </div>
                 </div>
-
-                <button
-                  onClick={() =>
-                    setSelectedCourse(course)
-                  }
-                  className="primary-btn mt-8"
-                >
-                  View Course
-                </button>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* COURSE MODAL */}
-
-      {selectedCourse && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-6 z-50">
-          <div className="bg-white rounded-[35px] shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-5xl font-black">
-              {selectedCourse.title}
-            </h2>
-
-            <div className="aspect-video rounded-[25px] overflow-hidden mt-8">
-              <iframe
-                src={selectedCourse.video}
-                className="w-full h-full"
-                allowFullScreen
-              />
-            </div>
-
-            <div className="space-y-5 mt-8">
-              <Info
-                title="Course Description"
-                value={
-                  selectedCourse.description
-                }
-              />
-
-              <Info
-                title="AI Generated About"
-                value="This course is designed to help startup founders and students gain practical knowledge and execution strategies."
-              />
-
-              <div className="bg-[#f4f8ff] rounded-[22px] p-5">
-                <h3 className="text-2xl font-black">
-                  Learning Outcomes
-                </h3>
-
-                <div className="space-y-3 mt-4">
-                  {selectedCourse.outcomes.map(
-                    (item) => (
-                      <div
-                        key={item}
-                        className="bg-white rounded-2xl p-4"
-                      >
-                        {item}
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() =>
-                setSelectedCourse(null)
-              }
-              className="primary-btn mt-8"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
       <style jsx global>{`
         .glass-card {
-          background: rgba(255, 255, 255, 0.75);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.8);
-          border-radius: 36px;
-          padding: 32px;
-          box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+          background: white;
+          border-radius: 40px;
+          padding: 40px;
+          box-shadow: 0 20px 60px
+            rgba(15, 23, 42, 0.08);
         }
 
-        .tool-title {
-          font-size: 36px;
+        .title {
+          font-size: 48px;
           font-weight: 900;
         }
 
@@ -625,75 +831,54 @@ export default function AIAcceleratorPage() {
           width: 100%;
           border: 1px solid #dbe4f0;
           background: #f8fbff;
-          padding: 16px 18px;
+          padding: 18px;
           border-radius: 18px;
           outline: none;
+          font-size: 15px;
         }
 
         .primary-btn {
-          width: 100%;
           background: #07162b;
           color: white;
-          padding: 16px;
+          padding: 18px 28px;
+          border-radius: 20px;
+          font-weight: 900;
+        }
+
+        .secondary-btn {
+          background: #2563eb;
+          color: white;
+          padding: 18px 28px;
+          border-radius: 20px;
+          font-weight: 900;
+        }
+
+        .quick-btn {
+          background: #e0edff;
+          color: #2563eb;
+          padding: 14px 22px;
           border-radius: 18px;
           font-weight: 900;
-          transition: 0.3s;
         }
 
-        .primary-btn:hover {
-          transform: translateY(-2px);
-        }
-
-        .result-box {
-          background: #f4f8ff;
+        .result-card {
+          background: #f8fbff;
+          border: 1px solid #dbe4f0;
           border-radius: 24px;
           padding: 24px;
-          margin-top: 24px;
         }
 
-        .tag-blue,
-        .tag-green,
-        .tag-orange {
-          padding: 10px 16px;
-          border-radius: 999px;
-          font-weight: 700;
+        .result-card h3 {
+          font-size: 24px;
+          font-weight: 900;
         }
 
-        .tag-blue {
-          background: #dbeafe;
-          color: #1d4ed8;
-        }
-
-        .tag-green {
-          background: #dcfce7;
-          color: #15803d;
-        }
-
-        .tag-orange {
-          background: #ffedd5;
-          color: #ea580c;
+        .result-card p {
+          margin-top: 14px;
+          color: #475569;
+          line-height: 1.8;
         }
       `}</style>
     </main>
-  );
-}
-
-function Info({
-  title,
-  value,
-}: {
-  title: string;
-  value: string;
-}) {
-  return (
-    <div className="bg-[#f4f8ff] rounded-[22px] p-5">
-      <h3 className="text-2xl font-black">
-        {title}
-      </h3>
-
-      <p className="text-slate-600 mt-3">
-        {value}
-      </p>
-    </div>
   );
 }
