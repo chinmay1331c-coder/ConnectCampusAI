@@ -1,403 +1,684 @@
+// app/components/GlobalAIChatbot.tsx
+
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { usePathname } from "next/navigation";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+} from "firebase/firestore";
+
 import { db } from "@/lib/firebase";
 
-type Role =
-  | "guest"
-  | "startup"
-  | "investor"
-  | "mentor"
-  | "organizer"
-  | "service-provider";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
 
 type Message = {
   sender: "user" | "ai";
   text: string;
 };
 
-type ComplaintDraft = {
-  step: "idle" | "ask_issue" | "ask_section" | "ask_contact" | "confirm";
-  issue: string;
-  section: string;
-  contact: string;
-};
-
 export default function GlobalAIChatbot() {
+  const router = useRouter();
+
   const pathname = usePathname();
-  const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const [open, setOpen] = useState(false);
-  const [typing, setTyping] = useState(false);
-  const [input, setInput] = useState("");
-  const [role, setRole] = useState<Role>("guest");
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [open, setOpen] =
+    useState(false);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      sender: "ai",
-      text: "Hi 👋 I’m your CampusConnectAI assistant. I can guide you through the platform or help you raise a complaint.",
-    },
-  ]);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [complaintMode, setComplaintMode] = useState(false);
-  const [complaint, setComplaint] = useState<ComplaintDraft>({
-    step: "idle",
-    issue: "",
-    section: "",
-    contact: "",
-  });
+  const [input, setInput] =
+    useState("");
+
+  const [messages, setMessages] =
+    useState<Message[]>([
+      {
+        sender: "ai",
+        text: "Hey 👋 I'm CampusConnectAI — your AI startup buddy 🚀\n\nI can help you build startups, find teammates, connect with mentors, explain concepts, open pages automatically, and even chat casually 😄",
+      },
+    ]);
+
+  const messagesEndRef =
+    useRef<HTMLDivElement>(null);
+
+  // USER CONTEXT
+
+  const userRole =
+    typeof window !== "undefined"
+      ? localStorage.getItem(
+          "userRole"
+        ) || "guest"
+      : "guest";
+
+  const loggedIn =
+    typeof window !== "undefined"
+      ? !!localStorage.getItem(
+          "startupLoggedIn"
+        ) ||
+        !!localStorage.getItem(
+          "mentorLoggedIn"
+        ) ||
+        !!localStorage.getItem(
+          "investorLoggedIn"
+        ) ||
+        !!localStorage.getItem(
+          "organizerLoggedIn"
+        )
+      : false;
+
+  // FRIENDLY RESPONSES
+
+  const friendlyReplies = [
+    "Haha 😄",
+    "That’s actually a great question 🚀",
+    "Ooo interesting 👀",
+    "Let’s do this together 🔥",
+    "I got you 🤝",
+    "You’re building something awesome 💡",
+    "No worries 😎",
+    "That sounds exciting 🚀",
+  ];
+
+  const endings = [
+    "Need help with anything else? 😄",
+    "We can build something awesome 🚀",
+    "Want me to open something for you?",
+    "I'm here if you need help 🤝",
+  ];
+
+  const randomReply = () => {
+    return friendlyReplies[
+      Math.floor(
+        Math.random() *
+          friendlyReplies.length
+      )
+    ];
+  };
+
+  const randomEnding = () => {
+    return endings[
+      Math.floor(
+        Math.random() *
+          endings.length
+      )
+    ];
+  };
+
+  // AUTO SCROLL
 
   useEffect(() => {
-    const state = detectUser();
-    setRole(state.role);
-    setLoggedIn(state.loggedIn);
-  }, [open]);
+    messagesEndRef.current?.scrollIntoView(
+      {
+        behavior: "smooth",
+      }
+    );
+  }, [messages]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing]);
+  // ACTION EXECUTOR
 
-  const suggestions = useMemo(() => {
-    if (!loggedIn) return ["Login", "Sign Up", "Explore Platform", "Raise Complaint"];
+  const executeAction = (
+    intent: string
+  ) => {
+    switch (intent) {
+      case "open_login":
+        router.push("/login");
+        break;
 
-    if (role === "startup")
-      return ["Find Team", "Create Startup Post", "Explore Investors", "Open Accelerator"];
+      case "open_signup":
+        router.push(
+          "/onboarding"
+        );
+        break;
 
-    if (role === "investor")
-      return ["Networking", "View Startups", "Rate Startup", "Raise Complaint"];
+      case "open_mentors":
+        router.push(
+          "/features/mentors"
+        );
+        break;
 
-    if (role === "mentor")
-      return ["View Requests", "Active Mentorships", "Messages", "Raise Complaint"];
+      case "open_team":
+        router.push(
+          "/features/team-formation"
+        );
+        break;
 
-    if (role === "organizer")
-      return ["Create Event", "View Complaints", "Courses", "Analytics"];
+      case "open_competitions":
+        router.push(
+          "/features/competitions"
+        );
+        break;
 
-    return ["Service Requests", "Projects", "Messages", "Raise Complaint"];
-  }, [loggedIn, role]);
+      case "open_accelerator":
+        router.push(
+          "/features/ai-accelerator"
+        );
+        break;
 
-  const sendMessage = async (customText?: string) => {
-    const text = customText || input;
-    if (!text.trim()) return;
+      case "open_networking":
+        router.push(
+          "/features/networking"
+        );
+        break;
 
-    setMessages((prev) => [...prev, { sender: "user", text }]);
-    setInput("");
-    setTyping(true);
-
-    setTimeout(async () => {
-      const reply = await generateAIReply(text);
-
-      setTyping(false);
-      setMessages((prev) => [...prev, { sender: "ai", text: reply }]);
-    }, 600);
+      case "open_services":
+        router.push(
+          "/features/services"
+        );
+        break;
+    }
   };
 
-  const generateAIReply = async (query: string) => {
-    const q = query.toLowerCase();
+  // AI RESPONSE SYSTEM
 
-    if (isComplaintIntent(q)) {
-      setComplaintMode(true);
-      setComplaint({
-        step: "ask_issue",
-        issue: "",
-        section: "",
-        contact: "",
-      });
+  const generateResponse =
+    async (
+      message: string
+    ) => {
+      const msg =
+        message.toLowerCase();
 
-      return "I’m sorry you’re facing an issue. Please describe the problem clearly, and I’ll register it for the Organizer/Admin team.";
-    }
+      // GREETING
 
-    if (complaintMode) {
-      return await handleComplaintFlow(query);
-    }
+      if (
+        msg.includes("hi") ||
+        msg.includes("hello") ||
+        msg.includes("hey")
+      ) {
+        return {
+          text: `${randomReply()}
 
-    if (!loggedIn) {
-      return guestReply(q);
-    }
+Hey 👋 Welcome to CampusConnectAI.
 
-    return roleAwareReply(q);
-  };
+I'm your AI buddy + startup assistant 🚀
 
-  const handleComplaintFlow = async (answer: string) => {
-    if (complaint.step === "ask_issue") {
-      setComplaint((prev) => ({
-        ...prev,
-        issue: answer,
-        step: "ask_section",
-      }));
+I can:
+🚀 Help build startups
+💡 Explain concepts
+🤝 Find teammates
+💰 Help with investors
+🎓 Teach skills
+🏆 Open features/pages
+😄 Chat casually too
 
-      return "Which section are you facing this issue in? Example: Login, Dashboard, Mentor, Services, Payment, Chatbot, or Other.";
-    }
+What are we building today?
 
-    if (complaint.step === "ask_section") {
-      setComplaint((prev) => ({
-        ...prev,
-        section: answer,
-        step: loggedIn ? "confirm" : "ask_contact",
-      }));
-
-      if (!loggedIn) {
-        return "Since you are not logged in, please share your email or phone number so the admin can contact you.";
+${randomEnding()}`,
+          intent: "",
+        };
       }
 
-      return "Thanks. Type “submit complaint” to confirm and send this to Organizer/Admin.";
-    }
+      // CASUAL CHAT
 
-    if (complaint.step === "ask_contact") {
-      setComplaint((prev) => ({
-        ...prev,
-        contact: answer,
-        step: "confirm",
-      }));
+      if (
+        msg.includes(
+          "how are you"
+        )
+      ) {
+        return {
+          text: `I’m doing amazing 😄 Helping startups grow all day is fun 🚀
 
-      return "Thanks. Type “submit complaint” to confirm and send this to Organizer/Admin.";
-    }
+What about you?
 
-    if (complaint.step === "confirm") {
-      if (!answer.toLowerCase().includes("submit")) {
-        return "Please type “submit complaint” to submit, or explain what you want to change.";
+${randomEnding()}`,
+          intent: "",
+        };
       }
 
-      await addDoc(collection(db, "complaints"), {
-        issueType: complaint.section || "Other",
-        description: complaint.issue,
-        details: `Page: ${pathname}`,
-        contact: complaint.contact || "Logged-in user",
-        role,
-        status: "pending",
-        adminResponse: "",
-        createdAt: serverTimestamp(),
-      });
+      if (
+        msg.includes("thank")
+      ) {
+        return {
+          text: `Always happy to help 🤝
 
-      setComplaintMode(false);
-      setComplaint({
-        step: "idle",
-        issue: "",
-        section: "",
-        contact: "",
-      });
+${randomEnding()}`,
+          intent: "",
+        };
+      }
 
-      return "Your complaint has been submitted ✅ Organizer/Admin can now view it in the Support dashboard.";
-    }
+      if (
+        msg.includes(
+          "who are you"
+        )
+      ) {
+        return {
+          text: `I'm CampusConnectAI 🤖
 
-    return "Please describe your issue.";
-  };
+Your AI startup buddy, mentor, guide, and assistant all in one 🚀
 
-  const guestReply = (q: string) => {
-    if (q.includes("login")) {
-      return "To login, open the homepage and click Login. Enter your registered email and password. If you don’t have an account, choose Sign Up first.";
-    }
+I can:
+• Open pages
+• Help startups
+• Explain concepts
+• Guide investors
+• Match teammates
+• Register complaints
+• Help you learn AI
 
-    if (q.includes("sign") || q.includes("register")) {
-      return "To sign up, click Sign Up, choose your role such as Startup, Investor, Mentor, Organizer, or Service Provider, then complete your details.";
-    }
+${randomEnding()}`,
+          intent: "",
+        };
+      }
 
-    if (
-      q.includes("team") ||
-      q.includes("mentor") ||
-      q.includes("investor") ||
-      q.includes("course") ||
-      q.includes("service") ||
-      q.includes("competition")
-    ) {
-      return "Please login first. After login, your dashboard will show features based on your role, such as mentors, investors, services, competitions, courses, and team matching.";
-    }
+      // LOGIN
 
-    return "CampusConnectAI helps startups connect with mentors, investors, service providers, competitions, courses, and teammates. Please login or sign up to access your personalized dashboard.";
-  };
+      if (
+        msg.includes("login")
+      ) {
+        return {
+          text: `${randomReply()}
 
-  const roleAwareReply = (q: string) => {
-    if (q.includes("team") || q.includes("collab")) {
-      return role === "startup"
-        ? "Go to Startup Dashboard → Collab Page → AI Team Match. Enter your skills, interests, preferred role, and startup idea to find best teammates."
-        : "AI Team Match is mainly for Startup users. Login as Startup to access team formation.";
-    }
+Opening login page for you 🚀
 
-    if (q.includes("mentor")) {
-      if (role === "startup")
-        return "Go to Startup Dashboard → Find Mentors → choose a mentor → send request. Once accepted, chat and calls are enabled.";
-      if (role === "mentor")
-        return "Go to Mentor Portal → Requests. Accept a startup request to unlock chat, audio call, and video call.";
-      return "Mentor discovery is available for Startup users, while Mentor Portal is for mentors.";
-    }
+${randomEnding()}`,
+          intent:
+            "open_login",
+        };
+      }
 
-    if (q.includes("investor") || q.includes("fund")) {
-      if (role === "startup")
-        return "Go to Startup Dashboard → Investors. Explore investor profiles and send your startup details.";
-      if (role === "investor")
-        return "Go to Investor Dashboard → Networking. You can view startup posts, rate, comment, and connect.";
-      return "Investor features depend on your role.";
-    }
+      // SIGNUP
 
-    if (q.includes("service")) {
-      if (role === "startup")
-        return "Go to Startup Dashboard → Services → choose a service provider → send your project request.";
-      if (role === "service-provider")
-        return "Go to Service Provider Dashboard → Requests to accept startup projects, then manage them in Projects.";
-      return "Services are mainly for Startups and Service Providers.";
-    }
+      if (
+        msg.includes(
+          "sign up"
+        ) ||
+        msg.includes(
+          "register"
+        )
+      ) {
+        return {
+          text: `${randomReply()}
 
-    if (q.includes("course") || q.includes("accelerator") || q.includes("learn")) {
-      if (role === "startup")
-        return "Go to Startup Dashboard → AI Accelerator. Use Idea Generator, Investor Memo, Pitch Practice, and Learning Hub.";
-      if (role === "organizer")
-        return "Go to Organizer Dashboard → Courses to upload and manage courses.";
-      return "Courses are available through the Startup AI Accelerator.";
-    }
+Opening signup portal 🚀
 
-    if (q.includes("competition") || q.includes("hackathon") || q.includes("event")) {
-      if (role === "startup")
-        return "Go to Startup Dashboard → Competitions → View Details → Join using the organizer registration link.";
-      if (role === "organizer")
-        return "Go to Organizer Dashboard → Events → Create Event / Hackathon. It appears live in Startup Competitions.";
-      return "Competitions are created by Organizers and explored by Startups.";
-    }
+${randomEnding()}`,
+          intent:
+            "open_signup",
+        };
+      }
 
-    if (q.includes("network") || q.includes("post")) {
-      if (role === "startup")
-        return "Go to Startup Dashboard → Networking. You can create startup posts and interact with others.";
-      if (role === "investor")
-        return "Go to Investor Dashboard → Networking. You can view, rate, comment, and connect, but cannot create posts.";
-      return "Networking is available mainly for Startup and Investor roles.";
-    }
+      // MENTOR
 
-    return "I understand your role and current context. Ask me about mentors, investors, services, courses, competitions, networking, team formation, or complaints.";
-  };
+      if (
+        msg.includes(
+          "mentor"
+        )
+      ) {
+        return {
+          text: `${randomReply()}
 
-  const quickClick = (text: string) => {
-    sendMessage(text);
-  };
+Opening mentors page 🚀
+
+You can:
+👨‍🏫 Explore mentors
+📩 Send mentorship requests
+💬 Chat after approval
+🎥 Start mentorship sessions
+
+${randomEnding()}`,
+          intent:
+            "open_mentors",
+        };
+      }
+
+      // TEAM
+
+      if (
+        msg.includes(
+          "team"
+        )
+      ) {
+        return {
+          text: `${randomReply()}
+
+Opening AI Team Match system 🚀
+
+Let’s find some awesome teammates for your startup 🔥
+
+${randomEnding()}`,
+          intent:
+            "open_team",
+        };
+      }
+
+      // COMPETITION
+
+      if (
+        msg.includes(
+          "competition"
+        ) ||
+        msg.includes(
+          "hackathon"
+        )
+      ) {
+        return {
+          text: `${randomReply()}
+
+Opening startup competitions & hackathons 🏆
+
+You can join exciting startup events and competitions there 🚀
+
+${randomEnding()}`,
+          intent:
+            "open_competitions",
+        };
+      }
+
+      // ACCELERATOR
+
+      if (
+        msg.includes("ai") ||
+        msg.includes(
+          "accelerator"
+        ) ||
+        msg.includes(
+          "startup idea"
+        )
+      ) {
+        return {
+          text: `${randomReply()}
+
+Opening AI Accelerator ⚡
+
+You can:
+🚀 Generate startup ideas
+💰 Create investor memos
+🎤 Practice interviews
+📚 Learn with AI tutor
+
+${randomEnding()}`,
+          intent:
+            "open_accelerator",
+        };
+      }
+
+      // NETWORKING
+
+      if (
+        msg.includes(
+          "investor"
+        ) ||
+        msg.includes(
+          "network"
+        )
+      ) {
+        return {
+          text: `${randomReply()}
+
+Opening networking section 🌐
+
+You can connect with:
+💰 Investors
+🚀 Startups
+🤝 Collaborators
+
+${randomEnding()}`,
+          intent:
+            "open_networking",
+        };
+      }
+
+      // SERVICES
+
+      if (
+        msg.includes(
+          "service"
+        )
+      ) {
+        return {
+          text: `${randomReply()}
+
+Opening service providers page 🚀
+
+${randomEnding()}`,
+          intent:
+            "open_services",
+        };
+      }
+
+      // COMPLAINT
+
+      if (
+        msg.includes(
+          "problem"
+        ) ||
+        msg.includes(
+          "issue"
+        ) ||
+        msg.includes(
+          "complaint"
+        )
+      ) {
+        await addDoc(
+          collection(
+            db,
+            "complaints"
+          ),
+          {
+            issue: message,
+            role: userRole,
+            status:
+              "pending",
+            page: pathname,
+            createdAt:
+              serverTimestamp(),
+          }
+        );
+
+        return {
+          text: `Your complaint has been registered successfully ✅
+
+Organizer/Admin team will review it soon.
+
+${randomEnding()}`,
+          intent: "",
+        };
+      }
+
+      // GENERAL AI MODE
+
+      return {
+        text: `${randomReply()}
+
+Here's what I understand about "${message}".
+
+CampusConnectAI is an AI-powered startup ecosystem where you can:
+
+🚀 Build startup ideas
+🤝 Find teammates
+💰 Connect with investors
+🎓 Learn using AI Accelerator
+🎤 Practice investor pitches
+🏆 Join hackathons
+👨‍🏫 Talk to mentors
+🌐 Network with startups
+
+I'm not just a guide — I can also:
+✅ Open pages
+✅ Navigate platform
+✅ Explain concepts
+✅ Help learn topics
+✅ Register complaints
+✅ Act like your AI startup friend 😄
+
+${randomEnding()}`,
+        intent: "",
+      };
+    };
+
+  // SEND MESSAGE
+
+  const sendMessage =
+    async () => {
+      if (!input) return;
+
+      const userMessage = {
+        sender: "user" as const,
+        text: input,
+      };
+
+      setMessages((prev) => [
+        ...prev,
+        userMessage,
+      ]);
+
+      setLoading(true);
+
+      const ai =
+        await generateResponse(
+          input
+        );
+
+      const aiMessage = {
+        sender: "ai" as const,
+        text: ai.text,
+      };
+
+      setMessages((prev) => [
+        ...prev,
+        aiMessage,
+      ]);
+
+      setLoading(false);
+
+      setInput("");
+
+      if (ai.intent) {
+        setTimeout(() => {
+          executeAction(
+            ai.intent
+          );
+        }, 1200);
+      }
+    };
 
   return (
     <>
+      {/* FLOAT BUTTON */}
+
       <button
-        onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-[9999] w-16 h-16 rounded-full bg-[#07162b] text-white text-3xl shadow-2xl hover:scale-110 transition"
+        onClick={() =>
+          setOpen(!open)
+        }
+        className="fixed bottom-6 right-6 z-[9999] w-20 h-20 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 shadow-2xl text-white text-4xl"
       >
         🤖
       </button>
 
-      {open && (
-        <div className="fixed bottom-28 right-6 z-[9999] w-[400px] max-w-[92vw] bg-white rounded-[30px] shadow-2xl border overflow-hidden">
-          <div className="bg-[#07162b] text-white p-5 flex justify-between">
-            <div>
-              <h2 className="text-xl font-black">CampusConnectAI Assistant</h2>
-              <p className="text-white/70 text-sm">
-                {loggedIn ? `Role: ${role}` : "Guest Mode"} • {pathname}
-              </p>
-            </div>
+      {/* CHAT WINDOW */}
 
-            <button onClick={() => setOpen(false)} className="text-2xl">
-              ×
-            </button>
+      {open && (
+        <div className="fixed bottom-32 right-6 w-[430px] h-[720px] bg-white rounded-[35px] shadow-2xl border border-slate-200 z-[9999] flex flex-col overflow-hidden">
+          {/* HEADER */}
+
+          <div className="bg-[#07162b] text-white p-6">
+            <h2 className="text-3xl font-black">
+              CampusConnectAI
+            </h2>
+
+            <p className="text-slate-300 mt-2">
+              AI Startup Buddy 🚀
+            </p>
           </div>
 
-          <div className="h-[390px] overflow-y-auto bg-[#f4f8ff] p-5 space-y-4">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] rounded-[20px] p-4 text-sm leading-relaxed ${
-                  msg.sender === "user"
-                    ? "bg-blue-600 text-white ml-auto"
-                    : "bg-white text-[#07162b]"
-                }`}
-              >
-                {msg.text}
-              </div>
-            ))}
+          {/* QUICK ACTIONS */}
 
-            {typing && (
-              <div className="bg-white rounded-[20px] p-4 text-sm w-fit">
-                AI is thinking...
+          <div className="flex gap-3 flex-wrap p-4 border-b">
+            {[
+              "Login",
+              "Find Mentors",
+              "Competitions",
+              "AI Accelerator",
+              "Find Team",
+            ].map((item) => (
+              <button
+                key={item}
+                onClick={() =>
+                  setInput(item)
+                }
+                className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-bold text-sm"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          {/* MESSAGES */}
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[#f8fbff]">
+            {messages.map(
+              (
+                msg,
+                index
+              ) => (
+                <div
+                  key={index}
+                  className={`max-w-[85%] whitespace-pre-line p-4 rounded-3xl ${
+                    msg.sender ===
+                    "user"
+                      ? "bg-[#07162b] text-white ml-auto"
+                      : "bg-white border border-slate-200 text-[#07162b]"
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              )
+            )}
+
+            {loading && (
+              <div className="bg-white border border-slate-200 text-[#07162b] max-w-[85%] p-4 rounded-3xl animate-pulse">
+                🤖 Thinking like
+                ChatGPT...
               </div>
             )}
 
-            <div ref={bottomRef} />
+            <div
+              ref={messagesEndRef}
+            />
           </div>
 
-          <div className="p-4 bg-white border-t">
-            <div className="flex flex-wrap gap-2 mb-3">
-              {suggestions.map((item) => (
-                <button
-                  key={item}
-                  onClick={() => quickClick(item)}
-                  className="bg-blue-100 text-blue-700 px-3 py-2 rounded-full text-xs font-bold"
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
+          {/* INPUT */}
 
-            <div className="flex gap-2">
-              <input
-                placeholder="Ask anything..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") sendMessage();
-                }}
-                className="chat-input"
-              />
+          <div className="p-4 border-t bg-white flex gap-3">
+            <input
+              value={input}
+              onChange={(e) =>
+                setInput(
+                  e.target.value
+                )
+              }
+              onKeyDown={(e) => {
+                if (
+                  e.key ===
+                  "Enter"
+                ) {
+                  sendMessage();
+                }
+              }}
+              placeholder="Ask anything..."
+              className="flex-1 border border-slate-200 rounded-2xl px-5 outline-none"
+            />
 
-              <button
-                onClick={() => sendMessage()}
-                className="bg-[#07162b] text-white px-5 rounded-2xl font-black"
-              >
-                Send
-              </button>
-            </div>
+            <button
+              onClick={
+                sendMessage
+              }
+              className="bg-[#07162b] text-white px-6 rounded-2xl font-black"
+            >
+              Send
+            </button>
           </div>
-
-          <style jsx global>{`
-            .chat-input {
-              width: 100%;
-              border: 1px solid #dbe4f0;
-              background: #f8fbff;
-              padding: 12px 14px;
-              border-radius: 14px;
-              outline: none;
-              font-size: 14px;
-            }
-          `}</style>
         </div>
       )}
     </>
-  );
-}
-
-function detectUser(): { loggedIn: boolean; role: Role } {
-  if (localStorage.getItem("startupLoggedIn") === "true") {
-    return { loggedIn: true, role: "startup" };
-  }
-
-  if (localStorage.getItem("investorLoggedIn") === "true") {
-    return { loggedIn: true, role: "investor" };
-  }
-
-  if (localStorage.getItem("mentorLoggedIn") === "true") {
-    return { loggedIn: true, role: "mentor" };
-  }
-
-  if (localStorage.getItem("organizerLoggedIn") === "true") {
-    return { loggedIn: true, role: "organizer" };
-  }
-
-  if (localStorage.getItem("serviceProviderLoggedIn") === "true") {
-    return { loggedIn: true, role: "service-provider" };
-  }
-
-  return { loggedIn: false, role: "guest" };
-}
-
-function isComplaintIntent(q: string) {
-  return (
-    q.includes("complaint") ||
-    q.includes("problem") ||
-    q.includes("issue") ||
-    q.includes("report") ||
-    q.includes("not working") ||
-    q.includes("error")
   );
 }

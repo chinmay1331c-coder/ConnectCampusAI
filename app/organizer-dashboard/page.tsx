@@ -35,19 +35,45 @@ type Competition = {
 
 type Complaint = {
   id: string;
-  issueType: string;
-  description: string;
-  details: string;
+  issueType?: string;
+  issue?: string;
+  description?: string;
+  details?: string;
   status: "pending" | "resolved";
-  adminResponse: string;
+  adminResponse?: string;
+};
+
+type Course = {
+  id: string;
+  title: string;
+  shortDescription: string;
+  fullDescription: string;
+  thumbnail: string;
+  category: string;
+  difficulty: string;
+  duration: string;
+  video: string;
+};
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  targetRole: string;
+  link: string;
+  isBroadcast: boolean;
 };
 
 export default function OrganizerDashboardPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState("Dashboard");
+
   const [events, setEvents] = useState<Competition[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
   const [complaintFilter, setComplaintFilter] = useState("all");
   const [responseInputs, setResponseInputs] = useState<Record<string, string>>(
     {}
@@ -64,6 +90,27 @@ export default function OrganizerDashboardPage() {
     rules: "",
     eligibility: "",
   });
+
+  const [courseForm, setCourseForm] = useState({
+    title: "",
+    shortDescription: "",
+    fullDescription: "",
+    thumbnail: "🎓",
+    category: "",
+    difficulty: "",
+    duration: "",
+    video: "",
+  });
+
+  const [notificationForm, setNotificationForm] = useState({
+    title: "",
+    message: "",
+    targetRole: "all",
+    link: "",
+  });
+
+  const [courseLoading, setCourseLoading] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
 
   const sidebarItems = [
     "Dashboard",
@@ -96,59 +143,77 @@ export default function OrganizerDashboardPage() {
 
   useEffect(() => {
     const q = query(collection(db, "competitions"), orderBy("createdAt", "desc"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      })) as Competition[];
-
-      setEvents(data);
+    const unsub = onSnapshot(q, (snapshot) => {
+      setEvents(
+        snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        })) as Competition[]
+      );
     });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
   useEffect(() => {
     const q = query(collection(db, "complaints"), orderBy("createdAt", "desc"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      })) as Complaint[];
-
-      setComplaints(data);
+    const unsub = onSnapshot(q, (snapshot) => {
+      setComplaints(
+        snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        })) as Complaint[]
+      );
     });
 
-    return () => unsubscribe();
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, "courses"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      setCourses(
+        snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        })) as Course[]
+      );
+    });
+
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, "notifications"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      setNotifications(
+        snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        })) as NotificationItem[]
+      );
+    });
+
+    return () => unsub();
   }, []);
 
   const createEvent = async () => {
-    if (
-      !eventForm.title ||
-      !eventForm.description ||
-      !eventForm.thumbnail ||
-      !eventForm.registrationLink
-    ) {
-      alert("Please fill all event fields");
+    if (!eventForm.title || !eventForm.description || !eventForm.registrationLink) {
+      alert("Please fill Event Title, Description and Registration Link");
       return;
     }
 
     await addDoc(collection(db, "competitions"), {
       title: eventForm.title,
       organizer: "CampusConnect Organizer",
-      thumbnail: eventForm.thumbnail,
+      thumbnail: eventForm.thumbnail || "🏆",
       shortDescription: eventForm.description,
       fullDescription: eventForm.fullDescription || eventForm.description,
       category: eventForm.category || "Hackathon",
       deadline: eventForm.deadline || "2026-12-31",
-      rules:
-        eventForm.rules ||
-        "Follow organizer rules and submit before deadline.",
+      rules: eventForm.rules || "Follow organizer rules and submit before deadline.",
       eligibility:
-        eventForm.eligibility ||
-        "Open to startups, students and founders.",
+        eventForm.eligibility || "Open to startups, students and founders.",
       link: eventForm.registrationLink,
       featured: true,
       participants: 0,
@@ -174,6 +239,89 @@ export default function OrganizerDashboardPage() {
     await deleteDoc(doc(db, "competitions", id));
   };
 
+  const uploadCourse = async () => {
+    if (!courseForm.title || !courseForm.shortDescription) {
+      alert("Please fill Course Title and Short Description");
+      return;
+    }
+
+    try {
+      setCourseLoading(true);
+
+      await addDoc(collection(db, "courses"), {
+        title: courseForm.title,
+        shortDescription: courseForm.shortDescription,
+        fullDescription: courseForm.fullDescription,
+        thumbnail: courseForm.thumbnail || "🎓",
+        category: courseForm.category || "AI",
+        difficulty: courseForm.difficulty || "Beginner",
+        duration: courseForm.duration || "2 Hours",
+        video: courseForm.video,
+        createdAt: serverTimestamp(),
+      });
+
+      alert("Course uploaded to Learning Hub 🚀");
+
+      setCourseForm({
+        title: "",
+        shortDescription: "",
+        fullDescription: "",
+        thumbnail: "🎓",
+        category: "",
+        difficulty: "",
+        duration: "",
+        video: "",
+      });
+    } catch (error) {
+      console.log(error);
+      alert("Course upload failed");
+    }
+
+    setCourseLoading(false);
+  };
+
+  const deleteCourse = async (id: string) => {
+    await deleteDoc(doc(db, "courses", id));
+  };
+
+  const sendNotification = async () => {
+    if (!notificationForm.title || !notificationForm.message) {
+      alert("Please enter notification title and message");
+      return;
+    }
+
+    try {
+      setNotificationLoading(true);
+
+      await addDoc(collection(db, "notifications"), {
+        title: notificationForm.title,
+        message: notificationForm.message,
+        targetRole: notificationForm.targetRole,
+        link: notificationForm.link,
+        isBroadcast: notificationForm.targetRole === "all",
+        createdAt: serverTimestamp(),
+      });
+
+      alert("Notification sent successfully 🔔");
+
+      setNotificationForm({
+        title: "",
+        message: "",
+        targetRole: "all",
+        link: "",
+      });
+    } catch (error) {
+      console.log(error);
+      alert("Failed to send notification");
+    }
+
+    setNotificationLoading(false);
+  };
+
+  const deleteNotification = async (id: string) => {
+    await deleteDoc(doc(db, "notifications", id));
+  };
+
   const resolveComplaint = async (id: string) => {
     await updateDoc(doc(db, "complaints", id), {
       status: "resolved",
@@ -189,7 +337,6 @@ export default function OrganizerDashboardPage() {
 
   const filteredComplaints = useMemo(() => {
     if (complaintFilter === "all") return complaints;
-
     return complaints.filter((item) => item.status === complaintFilter);
   }, [complaints, complaintFilter]);
 
@@ -200,14 +347,11 @@ export default function OrganizerDashboardPage() {
       { title: "Total Mentors", value: 80 },
       { title: "Service Providers", value: 60 },
       { title: "Total Events", value: events.length },
-      {
-        title: "Participants",
-        value: events.reduce((sum, e) => sum + (e.participants || 0), 0),
-      },
-      { title: "Complaints", value: complaints.length },
-      { title: "Pending Complaints", value: complaints.filter((c) => c.status === "pending").length },
+      { title: "Courses", value: courses.length },
+      { title: "Notifications", value: notifications.length },
+      { title: "Pending Complaints", value: complaints.filter((c) => c.status !== "resolved").length },
     ],
-    [events, complaints]
+    [events, courses, notifications, complaints]
   );
 
   return (
@@ -245,12 +389,10 @@ export default function OrganizerDashboardPage() {
       <section className="flex-1 p-8 overflow-y-auto">
         {activeTab === "Dashboard" && (
           <>
-            <div className="bg-white rounded-[40px] shadow-xl p-10">
-              <h1 className="text-6xl font-black">Dashboard</h1>
-              <p className="text-slate-500 text-xl mt-3">
-                Manage platform operations dynamically.
-              </p>
-            </div>
+            <Header
+              title="Dashboard"
+              text="Manage platform operations dynamically."
+            />
 
             <div className="grid lg:grid-cols-4 gap-6 mt-10">
               {stats.map((item) => (
@@ -269,9 +411,7 @@ export default function OrganizerDashboardPage() {
         {activeTab === "Events" && (
           <>
             <div className="bg-white rounded-[40px] shadow-xl p-10">
-              <h1 className="text-5xl font-black">
-                Create Event / Hackathon 🎉
-              </h1>
+              <h1 className="text-5xl font-black">Create Event / Hackathon 🎉</h1>
 
               <div className="grid lg:grid-cols-2 gap-5 mt-8">
                 <input
@@ -283,24 +423,33 @@ export default function OrganizerDashboardPage() {
                   }
                 />
 
-                <textarea
-                  placeholder="Description"
-                  className="input-box h-24"
-                  value={eventForm.description}
-                  onChange={(e) =>
-                    setEventForm({
-                      ...eventForm,
-                      description: e.target.value,
-                    })
-                  }
-                />
-
                 <input
                   placeholder="Thumbnail Image URL / Emoji"
                   className="input-box"
                   value={eventForm.thumbnail}
                   onChange={(e) =>
                     setEventForm({ ...eventForm, thumbnail: e.target.value })
+                  }
+                />
+
+                <textarea
+                  placeholder="Short Description"
+                  className="input-box h-24"
+                  value={eventForm.description}
+                  onChange={(e) =>
+                    setEventForm({ ...eventForm, description: e.target.value })
+                  }
+                />
+
+                <textarea
+                  placeholder="Full Description"
+                  className="input-box h-24"
+                  value={eventForm.fullDescription}
+                  onChange={(e) =>
+                    setEventForm({
+                      ...eventForm,
+                      fullDescription: e.target.value,
+                    })
                   }
                 />
 
@@ -345,13 +494,10 @@ export default function OrganizerDashboardPage() {
 
                 <textarea
                   placeholder="Eligibility"
-                  className="input-box h-24"
+                  className="input-box h-24 lg:col-span-2"
                   value={eventForm.eligibility}
                   onChange={(e) =>
-                    setEventForm({
-                      ...eventForm,
-                      eligibility: e.target.value,
-                    })
+                    setEventForm({ ...eventForm, eligibility: e.target.value })
                   }
                 />
               </div>
@@ -402,6 +548,286 @@ export default function OrganizerDashboardPage() {
           </>
         )}
 
+        {activeTab === "Courses" && (
+          <>
+            <div className="bg-white rounded-[40px] shadow-xl p-10">
+              <h1 className="text-5xl font-black">📚 Upload Course</h1>
+              <p className="text-slate-500 text-xl mt-4">
+                Courses uploaded here appear live in Startup Learning Hub.
+              </p>
+
+              <div className="grid lg:grid-cols-2 gap-5 mt-8">
+                <input
+                  placeholder="Course Title"
+                  className="input-box"
+                  value={courseForm.title}
+                  onChange={(e) =>
+                    setCourseForm({ ...courseForm, title: e.target.value })
+                  }
+                />
+
+                <input
+                  placeholder="Thumbnail Emoji / Image URL"
+                  className="input-box"
+                  value={courseForm.thumbnail}
+                  onChange={(e) =>
+                    setCourseForm({ ...courseForm, thumbnail: e.target.value })
+                  }
+                />
+
+                <input
+                  placeholder="Short Description"
+                  className="input-box"
+                  value={courseForm.shortDescription}
+                  onChange={(e) =>
+                    setCourseForm({
+                      ...courseForm,
+                      shortDescription: e.target.value,
+                    })
+                  }
+                />
+
+                <input
+                  placeholder="Category: AI / Business / Tech"
+                  className="input-box"
+                  value={courseForm.category}
+                  onChange={(e) =>
+                    setCourseForm({ ...courseForm, category: e.target.value })
+                  }
+                />
+
+                <input
+                  placeholder="Difficulty: Beginner / Intermediate / Advanced"
+                  className="input-box"
+                  value={courseForm.difficulty}
+                  onChange={(e) =>
+                    setCourseForm({
+                      ...courseForm,
+                      difficulty: e.target.value,
+                    })
+                  }
+                />
+
+                <input
+                  placeholder="Duration"
+                  className="input-box"
+                  value={courseForm.duration}
+                  onChange={(e) =>
+                    setCourseForm({ ...courseForm, duration: e.target.value })
+                  }
+                />
+
+                <input
+                  placeholder="Video URL"
+                  className="input-box lg:col-span-2"
+                  value={courseForm.video}
+                  onChange={(e) =>
+                    setCourseForm({ ...courseForm, video: e.target.value })
+                  }
+                />
+
+                <textarea
+                  placeholder="Full Course Description"
+                  className="input-box h-32 lg:col-span-2"
+                  value={courseForm.fullDescription}
+                  onChange={(e) =>
+                    setCourseForm({
+                      ...courseForm,
+                      fullDescription: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <button
+                onClick={uploadCourse}
+                className="mt-8 bg-[#07162b] text-white px-10 py-5 rounded-2xl font-black"
+              >
+                {courseLoading ? "Uploading..." : "Upload Course 🚀"}
+              </button>
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-8 mt-10">
+              {courses.map((course) => (
+                <div
+                  key={course.id}
+                  className="bg-white rounded-[35px] shadow-xl overflow-hidden"
+                >
+                  <div className="h-52 bg-gradient-to-r from-blue-600 to-cyan-500 flex items-center justify-center text-7xl">
+                    {course.thumbnail?.startsWith("http") ? (
+                      <img
+                        src={course.thumbnail}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      course.thumbnail || "🎓"
+                    )}
+                  </div>
+
+                  <div className="p-7">
+                    <div className="flex gap-3 flex-wrap">
+                      <span className="chip">{course.category}</span>
+                      <span className="purple-chip">{course.difficulty}</span>
+                    </div>
+
+                    <h3 className="text-3xl font-black mt-5">{course.title}</h3>
+                    <p className="text-slate-500 mt-4">
+                      {course.shortDescription}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-6">
+                      <span className="font-black">⏱️ {course.duration}</span>
+                      <button
+                        onClick={() => deleteCourse(course.id)}
+                        className="bg-red-500 text-white px-5 py-3 rounded-2xl font-black"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {activeTab === "Notifications" && (
+          <>
+            <div className="bg-white rounded-[40px] shadow-xl p-10">
+              <h1 className="text-5xl font-black">🔔 Notification System</h1>
+              <p className="text-slate-500 text-xl mt-4">
+                Send real-time notifications to users by role.
+              </p>
+
+              <div className="grid lg:grid-cols-2 gap-5 mt-8">
+                <input
+                  placeholder="Notification Title"
+                  className="input-box"
+                  value={notificationForm.title}
+                  onChange={(e) =>
+                    setNotificationForm({
+                      ...notificationForm,
+                      title: e.target.value,
+                    })
+                  }
+                />
+
+                <select
+                  className="input-box"
+                  value={notificationForm.targetRole}
+                  onChange={(e) =>
+                    setNotificationForm({
+                      ...notificationForm,
+                      targetRole: e.target.value,
+                    })
+                  }
+                >
+                  <option value="all">All Users</option>
+                  <option value="startup">Startups</option>
+                  <option value="investor">Investors</option>
+                  <option value="mentor">Mentors</option>
+                  <option value="service-provider">Service Providers</option>
+                </select>
+
+                <input
+                  placeholder="Optional Link / Redirect URL"
+                  className="input-box lg:col-span-2"
+                  value={notificationForm.link}
+                  onChange={(e) =>
+                    setNotificationForm({
+                      ...notificationForm,
+                      link: e.target.value,
+                    })
+                  }
+                />
+
+                <textarea
+                  placeholder="Notification Message"
+                  className="input-box h-32 lg:col-span-2"
+                  value={notificationForm.message}
+                  onChange={(e) =>
+                    setNotificationForm({
+                      ...notificationForm,
+                      message: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <button
+                onClick={sendNotification}
+                className="mt-8 bg-[#07162b] text-white px-10 py-5 rounded-3xl text-xl font-black shadow-xl"
+              >
+                {notificationLoading ? "Sending..." : "Send Notification 🚀"}
+              </button>
+            </div>
+
+            <div className="bg-white rounded-[40px] shadow-xl p-10 mt-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-5xl font-black">Sent Notifications</h2>
+                  <p className="text-slate-500 text-xl mt-4">
+                    Real-time notification history.
+                  </p>
+                </div>
+
+                <div className="bg-blue-100 text-blue-700 px-6 py-4 rounded-full font-black">
+                  {notifications.length} Sent
+                </div>
+              </div>
+
+              <div className="space-y-5 mt-10">
+                {notifications.length === 0 && (
+                  <div className="bg-[#f8fbff] rounded-[30px] p-10 text-center">
+                    <h3 className="text-3xl font-black">No notifications yet</h3>
+                  </div>
+                )}
+
+                {notifications.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-[#f8fbff] rounded-[30px] p-7 border border-slate-200"
+                  >
+                    <div className="flex justify-between gap-5">
+                      <div>
+                        <div className="flex gap-3 flex-wrap">
+                          <span className="chip">{item.targetRole}</span>
+
+                          {item.isBroadcast && (
+                            <span className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-black text-sm">
+                              Broadcast
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-3xl font-black mt-5">
+                          {item.title}
+                        </h3>
+
+                        <p className="text-slate-600 mt-3">{item.message}</p>
+
+                        {item.link && (
+                          <p className="text-blue-600 font-bold mt-3">
+                            Link: {item.link}
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => deleteNotification(item.id)}
+                        className="bg-red-500 text-white px-6 py-3 rounded-2xl font-black h-fit"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
         {activeTab === "Support" && (
           <>
             <div className="bg-white rounded-[40px] shadow-xl p-10">
@@ -439,44 +865,36 @@ export default function OrganizerDashboardPage() {
                   key={item.id}
                   className="bg-white rounded-[35px] shadow-xl p-8"
                 >
-                  <div className="flex items-start justify-between gap-6">
-                    <div>
-                      <span
-                        className={`px-5 py-2 rounded-full font-bold ${
-                          item.status === "resolved"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
+                  <span
+                    className={`px-5 py-2 rounded-full font-bold ${
+                      item.status === "resolved"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }`}
+                  >
+                    {item.status || "pending"}
+                  </span>
 
-                      <h2 className="text-3xl font-black mt-5">
-                        {item.issueType}
-                      </h2>
+                  <h2 className="text-3xl font-black mt-5">
+                    {item.issueType || "Complaint"}
+                  </h2>
 
-                      <p className="text-slate-600 mt-4">
-                        {item.description}
-                      </p>
+                  <p className="text-slate-600 mt-4">
+                    {item.description || item.issue}
+                  </p>
 
-                      {item.details && (
-                        <p className="text-blue-600 font-bold mt-3">
-                          Details: {item.details}
-                        </p>
-                      )}
+                  {item.details && (
+                    <p className="text-blue-600 font-bold mt-3">
+                      Details: {item.details}
+                    </p>
+                  )}
 
-                      {item.adminResponse && (
-                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mt-5">
-                          <h3 className="font-black text-blue-700">
-                            Admin Response
-                          </h3>
-                          <p className="text-slate-600 mt-2">
-                            {item.adminResponse}
-                          </p>
-                        </div>
-                      )}
+                  {item.adminResponse && (
+                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mt-5">
+                      <h3 className="font-black text-blue-700">Admin Response</h3>
+                      <p className="text-slate-600 mt-2">{item.adminResponse}</p>
                     </div>
-                  </div>
+                  )}
 
                   {item.status !== "resolved" && (
                     <div className="mt-6 flex gap-4">
@@ -508,10 +926,12 @@ export default function OrganizerDashboardPage() {
 
         {activeTab !== "Dashboard" &&
           activeTab !== "Events" &&
-          activeTab !== "Support" && (
-            <Section
+          activeTab !== "Support" &&
+          activeTab !== "Courses" &&
+          activeTab !== "Notifications" && (
+            <Header
               title={activeTab}
-              text="This module is ready for expansion."
+              text="This module is ready for expansion. Existing design preserved."
             />
           )}
       </section>
@@ -526,18 +946,35 @@ export default function OrganizerDashboardPage() {
           outline: none;
           font-size: 15px;
         }
+
+        textarea.input-box {
+          height: auto;
+          padding-top: 16px;
+        }
+
+        .chip {
+          background: #dbeafe;
+          color: #2563eb;
+          padding: 10px 18px;
+          border-radius: 999px;
+          font-weight: 800;
+          font-size: 14px;
+        }
+
+        .purple-chip {
+          background: #ede9fe;
+          color: #7c3aed;
+          padding: 10px 18px;
+          border-radius: 999px;
+          font-weight: 800;
+          font-size: 14px;
+        }
       `}</style>
     </main>
   );
 }
 
-function Section({
-  title,
-  text,
-}: {
-  title: string;
-  text: string;
-}) {
+function Header({ title, text }: { title: string; text: string }) {
   return (
     <div className="bg-white rounded-[40px] shadow-xl p-10">
       <h1 className="text-5xl font-black">{title}</h1>

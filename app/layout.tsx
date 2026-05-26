@@ -3,11 +3,11 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import GlobalAIChatbot from "@/components/GlobalAIChatbot";
+import NotificationBell from "@/components/NotificationBell";
 
 export const metadata: Metadata = {
   title: "CampusConnectAI",
-  description:
-    "AI-powered startup collaboration platform",
+  description: "AI-powered startup ecosystem platform",
 };
 
 export default function RootLayout({
@@ -20,8 +20,8 @@ export default function RootLayout({
       <body className="bg-[#f4f8ff] text-[#07162b]">
         {children}
 
-        {/* GLOBAL AI CHATBOT */}
         <GlobalAIChatbot />
+        <NotificationBell />
       </body>
     </html>
   );
