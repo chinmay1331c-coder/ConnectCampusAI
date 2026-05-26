@@ -1,7 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  addDoc,
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type Mentor = {
   id: number;
@@ -15,8 +25,27 @@ type Mentor = {
   bio: string;
 };
 
+type MentorRequest = {
+  id: string;
+  mentorId: number;
+  mentorName: string;
+  startupName: string;
+  startupBio: string;
+  startupSkills: string;
+  area: string;
+  message: string;
+  status: "pending" | "accepted" | "rejected";
+};
+
+type ChatMessage = {
+  id: string;
+  requestId: string;
+  sender: "startup" | "mentor";
+  text: string;
+};
+
 export default function FindMentorsPage() {
-  const [mentors] = useState<Mentor[]>([
+  const mentors: Mentor[] = [
     {
       id: 1,
       name: "Dr. Rajesh Kumar",
@@ -39,40 +68,82 @@ export default function FindMentorsPage() {
       experience: "9 Years",
       bio: "Mentoring founders on business growth, funding and GTM.",
     },
-  ]);
+  ];
 
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
-
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<MentorRequest[]>([]);
+  const [selectedChat, setSelectedChat] = useState<MentorRequest | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
 
   const [form, setForm] = useState({
     startupName: "",
-    message: "",
+    startupBio: "",
+    startupSkills: "",
     area: "",
-    description: "",
+    message: "",
   });
 
-  const sendRequest = () => {
+  useEffect(() => {
+    const q = query(
+      collection(db, "mentorRequests"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+      })) as MentorRequest[];
+
+      setRequests(data);
+    });
+
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "mentorMessages"),
+      orderBy("createdAt", "asc")
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+      })) as ChatMessage[];
+
+      setMessages(data);
+    });
+
+    return () => unsub();
+  }, []);
+
+  const sendRequest = async () => {
     if (
       !selectedMentor ||
       !form.startupName ||
-      !form.message ||
+      !form.startupBio ||
+      !form.startupSkills ||
       !form.area ||
-      !form.description
+      !form.message
     ) {
       alert("Please fill all fields");
       return;
     }
 
-    setRequests([
-      ...requests,
-      {
-        id: Date.now(),
-        mentorName: selectedMentor.name,
-        ...form,
-        status: "Pending",
-      },
-    ]);
+    await addDoc(collection(db, "mentorRequests"), {
+      mentorId: selectedMentor.id,
+      mentorName: selectedMentor.name,
+      startupName: form.startupName,
+      startupBio: form.startupBio,
+      startupSkills: form.startupSkills,
+      area: form.area,
+      message: form.message,
+      status: "pending",
+      createdAt: serverTimestamp(),
+    });
 
     alert("Mentor request sent ✅");
 
@@ -80,11 +151,33 @@ export default function FindMentorsPage() {
 
     setForm({
       startupName: "",
-      message: "",
+      startupBio: "",
+      startupSkills: "",
       area: "",
-      description: "",
+      message: "",
     });
   };
+
+  const sendStartupMessage = async () => {
+    if (!selectedChat || !chatInput) return;
+
+    await addDoc(collection(db, "mentorMessages"), {
+      requestId: selectedChat.id,
+      sender: "startup",
+      text: chatInput,
+      createdAt: serverTimestamp(),
+    });
+
+    setChatInput("");
+  };
+
+  const acceptedRequests = requests.filter(
+    (request) => request.status === "accepted"
+  );
+
+  const chatMessages = selectedChat
+    ? messages.filter((message) => message.requestId === selectedChat.id)
+    : [];
 
   return (
     <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] px-6 py-10 relative overflow-hidden">
@@ -93,11 +186,9 @@ export default function FindMentorsPage() {
       <div className="relative z-10 max-w-7xl mx-auto">
         <div className="rounded-full border border-white/70 bg-white/60 backdrop-blur-2xl shadow-2xl px-6 py-4 flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-2xl font-black">
-              Find Mentors 👨‍🏫
-            </h1>
+            <h1 className="text-2xl font-black">Find Mentors 👨‍🏫</h1>
             <p className="text-slate-500">
-              Connect with expert mentors for startup guidance
+              Send requests and chat after mentor approval.
             </p>
           </div>
 
@@ -112,33 +203,24 @@ export default function FindMentorsPage() {
           {mentors.map((mentor) => (
             <div
               key={mentor.id}
-              className="rounded-[36px] bg-white/80 border border-white p-8 shadow-xl hover:-translate-y-3 hover:shadow-[0_0_45px_rgba(59,130,246,0.25)] transition duration-300"
+              className="rounded-[36px] bg-white/80 border border-white p-8 shadow-xl hover:-translate-y-3 hover:shadow-[0_0_45px_rgba(59,130,246,0.25)] transition"
             >
               <div className="flex items-start gap-5">
                 <div className="text-7xl">{mentor.photo}</div>
 
                 <div>
-                  <h2 className="text-4xl font-black">
-                    {mentor.name}
-                  </h2>
-
+                  <h2 className="text-4xl font-black">{mentor.name}</h2>
                   <p className="text-blue-600 font-bold mt-2">
                     {mentor.designation}
                   </p>
-
-                  <p className="text-slate-500 mt-1">
-                    {mentor.company}
-                  </p>
-
+                  <p className="text-slate-500">{mentor.company}</p>
                   <p className="text-green-600 font-black mt-2">
                     {mentor.experience}
                   </p>
                 </div>
               </div>
 
-              <p className="text-slate-600 mt-6 leading-relaxed">
-                {mentor.bio}
-              </p>
+              <p className="text-slate-600 mt-6">{mentor.bio}</p>
 
               <div className="flex flex-wrap gap-3 mt-6">
                 {mentor.skills.map((skill) => (
@@ -151,20 +233,9 @@ export default function FindMentorsPage() {
                 ))}
               </div>
 
-              <div className="flex flex-wrap gap-3 mt-4">
-                {mentor.industries.map((industry) => (
-                  <span
-                    key={industry}
-                    className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold"
-                  >
-                    {industry}
-                  </span>
-                ))}
-              </div>
-
               <button
                 onClick={() => setSelectedMentor(mentor)}
-                className="mt-8 w-full bg-[#07162b] text-white py-4 rounded-2xl font-black hover:bg-blue-700 transition"
+                className="mt-8 w-full bg-[#07162b] text-white py-4 rounded-2xl font-black"
               >
                 Send Mentor Request
               </button>
@@ -173,15 +244,11 @@ export default function FindMentorsPage() {
         </div>
 
         <div className="rounded-[36px] bg-white/80 border border-white p-8 shadow-xl mt-10">
-          <h2 className="text-4xl font-black">
-            My Mentor Requests 📩
-          </h2>
+          <h2 className="text-4xl font-black">My Mentor Requests 📩</h2>
 
           <div className="space-y-5 mt-8">
             {requests.length === 0 && (
-              <p className="text-slate-500">
-                No mentor requests sent yet.
-              </p>
+              <p className="text-slate-500">No mentor requests sent yet.</p>
             )}
 
             {requests.map((request) => (
@@ -190,26 +257,78 @@ export default function FindMentorsPage() {
                 className="border rounded-[25px] p-6 flex justify-between items-center"
               >
                 <div>
-                  <h3 className="text-2xl font-black">
-                    {request.mentorName}
-                  </h3>
-
-                  <p className="text-slate-500 mt-2">
-                    {request.message}
-                  </p>
-
+                  <h3 className="text-2xl font-black">{request.mentorName}</h3>
+                  <p className="text-slate-500 mt-2">{request.message}</p>
                   <p className="text-blue-600 font-bold mt-2">
                     Area: {request.area}
                   </p>
                 </div>
 
-                <span className="bg-yellow-100 text-yellow-700 px-5 py-2 rounded-full font-bold">
-                  {request.status}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`px-5 py-2 rounded-full font-bold ${
+                      request.status === "accepted"
+                        ? "bg-green-100 text-green-700"
+                        : request.status === "rejected"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }`}
+                  >
+                    {request.status}
+                  </span>
+
+                  {request.status === "accepted" && (
+                    <button
+                      onClick={() => setSelectedChat(request)}
+                      className="bg-[#07162b] text-white px-5 py-2 rounded-full font-black"
+                    >
+                      Chat
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
+
+        {selectedChat && (
+          <div className="rounded-[36px] bg-white/80 border border-white p-8 shadow-xl mt-10">
+            <h2 className="text-4xl font-black">
+              Chat with {selectedChat.mentorName} 💬
+            </h2>
+
+            <div className="h-[350px] overflow-y-auto bg-[#f4f8ff] rounded-[25px] p-5 mt-6 space-y-4">
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`max-w-[70%] px-5 py-4 rounded-[25px] ${
+                    message.sender === "startup"
+                      ? "bg-blue-600 text-white ml-auto"
+                      : "bg-white"
+                  }`}
+                >
+                  {message.text}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-4 mt-5">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Type message..."
+                className="input-box flex-1"
+              />
+
+              <button
+                onClick={sendStartupMessage}
+                className="bg-[#07162b] text-white px-8 rounded-2xl font-black"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedMentor && (
@@ -225,10 +344,25 @@ export default function FindMentorsPage() {
                 className="input-box"
                 value={form.startupName}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    startupName: e.target.value,
-                  })
+                  setForm({ ...form, startupName: e.target.value })
+                }
+              />
+
+              <textarea
+                placeholder="Startup Bio"
+                className="input-box h-24"
+                value={form.startupBio}
+                onChange={(e) =>
+                  setForm({ ...form, startupBio: e.target.value })
+                }
+              />
+
+              <input
+                placeholder="Startup Skills"
+                className="input-box"
+                value={form.startupSkills}
+                onChange={(e) =>
+                  setForm({ ...form, startupSkills: e.target.value })
                 }
               />
 
@@ -236,24 +370,7 @@ export default function FindMentorsPage() {
                 placeholder="Area of Help"
                 className="input-box"
                 value={form.area}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    area: e.target.value,
-                  })
-                }
-              />
-
-              <textarea
-                placeholder="Startup Description"
-                className="input-box h-28"
-                value={form.description}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    description: e.target.value,
-                  })
-                }
+                onChange={(e) => setForm({ ...form, area: e.target.value })}
               />
 
               <textarea
@@ -261,10 +378,7 @@ export default function FindMentorsPage() {
                 className="input-box h-28"
                 value={form.message}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    message: e.target.value,
-                  })
+                  setForm({ ...form, message: e.target.value })
                 }
               />
             </div>
@@ -296,12 +410,6 @@ export default function FindMentorsPage() {
           padding: 16px 18px;
           border-radius: 18px;
           outline: none;
-        }
-
-        .input-box:focus {
-          border-color: #2563eb;
-          background: white;
-          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
       `}</style>
     </main>

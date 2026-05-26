@@ -1,623 +1,321 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  addDoc,
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-type Availability = {
+type Request = {
   id: string;
-  day: string;
-  start: string;
-  end: string;
-};
-
-type MentorRequest = {
-  id: string;
-  studentName: string;
-  message: string;
+  mentorId: number;
+  mentorName: string;
+  startupName: string;
+  startupBio: string;
+  startupSkills: string;
   area: string;
+  message: string;
   status: "pending" | "accepted" | "rejected";
 };
 
 type Message = {
   id: string;
-  sender: string;
+  requestId: string;
+  sender: "mentor" | "startup";
   text: string;
 };
 
-type Follower = {
-  id: string;
-  name: string;
-  query: string;
-};
-
 export default function MentorPortalPage() {
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("requests");
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [filter, setFilter] = useState("all");
+  const [selectedChat, setSelectedChat] = useState<Request | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatInput, setChatInput] = useState("");
 
-  const [mentorProfile, setMentorProfile] =
-    useState<any>(null);
-
-  const [availability, setAvailability] =
-    useState<Availability[]>([]);
-
-  const [requests, setRequests] =
-    useState<MentorRequest[]>([
-      {
-        id: "1",
-        studentName: "Rahul",
-        message: "Need startup guidance",
-        area: "AI Startup",
-        status: "pending",
-      },
-    ]);
-
-  const [followers, setFollowers] =
-    useState<Follower[]>([
-      {
-        id: "1",
-        name: "Aman",
-        query: "Need help with pitch deck",
-      },
-    ]);
-
-  const [messages, setMessages] =
-    useState<Message[]>([]);
-
-  const [selectedRequest, setSelectedRequest] =
-    useState<MentorRequest | null>(null);
-
-  const [chatInput, setChatInput] =
-    useState("");
-
-  const [day, setDay] = useState("");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-
-  const [editingSlotId, setEditingSlotId] =
-    useState<string | null>(null);
-
-  const [filter, setFilter] =
-    useState<
-      | "all"
-      | "pending"
-      | "accepted"
-      | "rejected"
-    >("all");
-
-  const [notifications, setNotifications] =
-    useState<string[]>([]);
-
-  // ------------------------
-  // LOGIN CHECK
-  // ------------------------
   useEffect(() => {
-    const mentorLoggedIn =
-      localStorage.getItem(
-        "mentorLoggedIn"
-      );
+    const q = query(
+      collection(db, "mentorRequests"),
+      orderBy("createdAt", "desc")
+    );
 
-    if (
-      mentorLoggedIn !== "true"
-    ) {
-      window.location.href =
-        "/mentor-login";
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+      })) as Request[];
 
-      return;
-    }
-
-    setMentorProfile({
-      mentorName:
-        "Demo Mentor",
-      profilePhoto: "",
+      setRequests(data);
     });
 
-    setLoading(false);
+    return () => unsub();
   }, []);
 
-  // ------------------------
-  // NOTIFICATION
-  // ------------------------
-  const notify = (
-    message: string
+  useEffect(() => {
+    const q = query(
+      collection(db, "mentorMessages"),
+      orderBy("createdAt", "asc")
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+      })) as Message[];
+
+      setMessages(data);
+    });
+
+    return () => unsub();
+  }, []);
+
+  const filteredRequests = useMemo(() => {
+    if (filter === "all") return requests;
+    return requests.filter((item) => item.status === filter);
+  }, [filter, requests]);
+
+  const updateRequest = async (
+    id: string,
+    status: "accepted" | "rejected"
   ) => {
-    setNotifications(
-      (prev) => [
-        message,
-        ...prev,
-      ]
-    );
-
-    setTimeout(() => {
-      setNotifications(
-        (prev) =>
-          prev.slice(
-            0,
-            prev.length - 1
-          )
-      );
-    }, 3000);
+    await updateDoc(doc(db, "mentorRequests", id), {
+      status,
+    });
   };
 
-  // ------------------------
-  // FILTER
-  // ------------------------
-  const filteredRequests =
-    useMemo(() => {
-      if (
-        filter ===
-        "all"
-      )
-        return requests;
+  const acceptedUsers = requests.filter(
+    (item) => item.status === "accepted"
+  );
 
-      return requests.filter(
-        (
-          request
-        ) =>
-          request.status ===
-          filter
-      );
-    }, [
-      requests,
-      filter,
-    ]);
+  const chatMessages = selectedChat
+    ? messages.filter((message) => message.requestId === selectedChat.id)
+    : [];
 
-  // ------------------------
-  // SAVE SLOT
-  // ------------------------
-  const saveAvailability =
-    () => {
-      if (
-        !day ||
-        !start ||
-        !end
-      ) {
-        alert(
-          "Fill all fields"
-        );
+  const sendMessage = async () => {
+    if (!selectedChat || !chatInput) return;
 
-        return;
-      }
+    await addDoc(collection(db, "mentorMessages"), {
+      requestId: selectedChat.id,
+      sender: "mentor",
+      text: chatInput,
+      createdAt: serverTimestamp(),
+    });
 
-      if (
-        editingSlotId
-      ) {
-        setAvailability(
-          (
-            prev
-          ) =>
-            prev.map(
-              (
-                slot
-              ) =>
-                slot.id ===
-                editingSlotId
-                  ? {
-                      ...slot,
-                      day,
-                      start,
-                      end,
-                    }
-                  : slot
-            )
-        );
-
-        notify(
-          "Availability updated"
-        );
-
-        setEditingSlotId(
-          null
-        );
-      } else {
-        setAvailability(
-          (
-            prev
-          ) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              day,
-              start,
-              end,
-            },
-          ]
-        );
-
-        notify(
-          "Availability added"
-        );
-      }
-
-      setDay("");
-      setStart("");
-      setEnd("");
-    };
-
-  // ------------------------
-  // EDIT SLOT
-  // ------------------------
-  const editSlot = (
-    slot: Availability
-  ) => {
-    setEditingSlotId(
-      slot.id
-    );
-
-    setDay(slot.day);
-    setStart(slot.start);
-    setEnd(slot.end);
+    setChatInput("");
   };
-
-  // ------------------------
-  // DELETE SLOT
-  // ------------------------
-  const deleteSlot = (
-    id: string
-  ) => {
-    setAvailability(
-      (prev) =>
-        prev.filter(
-          (
-            slot
-          ) =>
-            slot.id !==
-            id
-        )
-    );
-
-    notify(
-      "Availability deleted"
-    );
-  };
-
-  // ------------------------
-  // REQUEST ACTION
-  // ------------------------
-  const updateRequestStatus =
-    (
-      request: MentorRequest,
-      status:
-        | "accepted"
-        | "rejected"
-    ) => {
-      setRequests(
-        (
-          prev
-        ) =>
-          prev.map(
-            (
-              item
-            ) =>
-              item.id ===
-              request.id
-                ? {
-                    ...item,
-                    status,
-                  }
-                : item
-          )
-      );
-
-      notify(
-        `Request ${status}`
-      );
-    };
-
-  // ------------------------
-  // SEND MESSAGE
-  // ------------------------
-  const sendMessage =
-    () => {
-      if (
-        !chatInput
-      )
-        return;
-
-      setMessages(
-        (
-          prev
-        ) => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender:
-              "mentor",
-            text: chatInput,
-          },
-        ]
-      );
-
-      setChatInput("");
-
-      notify(
-        "Message sent"
-      );
-    };
-
-  // ------------------------
-  // LOGOUT
-  // ------------------------
-  const logout = () => {
-    localStorage.removeItem(
-      "mentorLoggedIn"
-    );
-
-    window.location.href =
-      "/mentor-login";
-  };
-
-  // ------------------------
-  // LOADING
-  // ------------------------
-  if (
-    loading
-  ) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-[#eef4ff]">
-        <h1 className="text-5xl font-black text-[#071739]">
-          Loading...
-        </h1>
-      </main>
-    );
-  }
 
   return (
-    <main className="min-h-screen bg-[#eef4ff] p-6">
-      
-      {/* Notifications */}
-      <div className="fixed top-6 right-6 z-50 space-y-3">
-        {notifications.map(
-          (
-            note,
-            index
-          ) => (
-            <div
-              key={
-                index
-              }
-              className="bg-[#071739] text-white px-5 py-3 rounded-2xl shadow-xl"
-            >
-              {note}
-            </div>
-          )
-        )}
-      </div>
+    <main className="min-h-screen bg-[#f4f8ff] text-[#07162b] flex">
+      <aside className="w-[300px] bg-white border-r border-slate-200 p-6 flex flex-col">
+        <h1 className="text-4xl font-black">Mentor Portal</h1>
+        <p className="text-slate-500 mt-2">Realtime request & chat system</p>
 
-      <div className="max-w-7xl mx-auto">
-
-        {/* TOP */}
-        <div className="bg-white rounded-[30px] shadow-xl p-6 flex items-center justify-between">
-          
-          <div className="flex items-center gap-5">
-            
-            <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center text-3xl">
-              👨‍🏫
-            </div>
-
-            <div>
-              <h1 className="text-4xl font-black text-[#071739]">
-                Mentor Dashboard
-              </h1>
-
-              <p className="text-slate-500 mt-2">
-                Welcome{" "}
-                {
-                  mentorProfile?.mentorName
-                }
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-            
-            <Link
-              href="/mentor-profile"
-              className="bg-slate-100 px-6 py-3 rounded-2xl font-bold"
-            >
-              Profile
-            </Link>
-
+        <div className="mt-10 space-y-3">
+          {["requests", "communication"].map((item) => (
             <button
-              onClick={
-                logout
-              }
-              className="bg-[#071739] text-white px-6 py-3 rounded-2xl font-bold"
+              key={item}
+              onClick={() => setActiveTab(item)}
+              className={`w-full text-left px-5 py-4 rounded-2xl font-bold ${
+                activeTab === item ? "bg-blue-600 text-white" : "bg-[#f5f7fb]"
+              }`}
             >
-              Logout
+              {item.toUpperCase()}
             </button>
-          </div>
+          ))}
         </div>
+      </aside>
 
-        {/* STATS */}
-        <div className="grid md:grid-cols-4 gap-6 mt-8">
-          
-          <StatCard
-            title="Availability"
-            value={
-              availability.length
-            }
-          />
+      <section className="flex-1 p-8 overflow-y-auto">
+        {activeTab === "requests" && (
+          <>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-5xl font-black">
+                  Mentorship Requests 📩
+                </h1>
+                <p className="text-slate-500 mt-3">
+                  Requests from Startup Find Mentors page appear here instantly.
+                </p>
+              </div>
 
-          <StatCard
-            title="Requests"
-            value={
-              requests.length
-            }
-          />
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="bg-white border border-slate-200 rounded-2xl px-5 py-4 font-bold"
+              >
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
 
-          <StatCard
-            title="Followers"
-            value={
-              followers.length
-            }
-          />
+            <div className="space-y-6">
+              {filteredRequests.length === 0 && (
+                <div className="bg-white rounded-[35px] shadow-xl p-10 text-center">
+                  <h2 className="text-3xl font-black">No requests yet.</h2>
+                </div>
+              )}
 
-          <StatCard
-            title="Messages"
-            value={
-              messages.length
-            }
-          />
-        </div>
-
-        {/* AVAILABILITY */}
-        <div className="bg-white rounded-[30px] shadow-xl p-8 mt-8">
-          
-          <h2 className="text-3xl font-black mb-6">
-            Availability
-          </h2>
-
-          <div className="grid md:grid-cols-4 gap-4">
-            
-            <input
-              placeholder="Day"
-              value={day}
-              onChange={(
-                e
-              ) =>
-                setDay(
-                  e.target
-                    .value
-                )
-              }
-              className="input-box"
-            />
-
-            <input
-              type="time"
-              value={
-                start
-              }
-              onChange={(
-                e
-              ) =>
-                setStart(
-                  e.target
-                    .value
-                )
-              }
-              className="input-box"
-            />
-
-            <input
-              type="time"
-              value={end}
-              onChange={(
-                e
-              ) =>
-                setEnd(
-                  e.target
-                    .value
-                )
-              }
-              className="input-box"
-            />
-
-            <button
-              onClick={
-                saveAvailability
-              }
-              className="bg-[#071739] text-white rounded-2xl font-bold"
-            >
-              {editingSlotId
-                ? "Update"
-                : "Add Slot"}
-            </button>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-5 mt-8">
-            {availability.map(
-              (
-                slot
-              ) => (
+              {filteredRequests.map((request) => (
                 <div
-                  key={
-                    slot.id
-                  }
-                  className="border rounded-3xl p-6 bg-slate-50"
+                  key={request.id}
+                  className="bg-white rounded-[35px] shadow-xl p-8"
                 >
-                  <h3 className="text-2xl font-bold">
-                    {
-                      slot.day
-                    }
-                  </h3>
+                  <div className="flex items-start justify-between gap-8">
+                    <div>
+                      <h2 className="text-4xl font-black">
+                        {request.startupName}
+                      </h2>
 
-                  <p className="text-slate-500 mt-2">
-                    {
-                      slot.start
-                    }{" "}
-                    -{" "}
-                    {
-                      slot.end
-                    }
-                  </p>
+                      <p className="text-slate-600 mt-4">
+                        {request.startupBio}
+                      </p>
 
-                  <div className="flex gap-3 mt-5">
-                    
-                    <button
-                      onClick={() =>
-                        editSlot(
-                          slot
-                        )
-                      }
-                      className="bg-blue-500 text-white px-4 py-2 rounded-xl"
-                    >
-                      Edit
-                    </button>
+                      <div className="flex flex-wrap gap-3 mt-5">
+                        {request.startupSkills
+                          ?.split(",")
+                          .map((skill) => (
+                            <span
+                              key={skill}
+                              className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-bold"
+                            >
+                              {skill.trim()}
+                            </span>
+                          ))}
+                      </div>
 
-                    <button
-                      onClick={() =>
-                        deleteSlot(
-                          slot.id
-                        )
-                      }
-                      className="bg-red-500 text-white px-4 py-2 rounded-xl"
-                    >
-                      Delete
-                    </button>
+                      <p className="font-bold text-blue-700 mt-6">
+                        Area: {request.area}
+                      </p>
+
+                      <p className="text-slate-600 mt-3">
+                        "{request.message}"
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 min-w-[180px]">
+                      <span
+                        className={`px-5 py-3 rounded-full text-center font-black ${
+                          request.status === "accepted"
+                            ? "bg-green-100 text-green-700"
+                            : request.status === "rejected"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {request.status}
+                      </span>
+
+                      {request.status === "pending" && (
+                        <>
+                          <button
+                            onClick={() =>
+                              updateRequest(request.id, "accepted")
+                            }
+                            className="bg-green-600 text-white py-3 rounded-2xl font-black"
+                          >
+                            Accept
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              updateRequest(request.id, "rejected")
+                            }
+                            className="bg-red-600 text-white py-3 rounded-2xl font-black"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )
-            )}
+              ))}
+            </div>
+          </>
+        )}
+
+        {activeTab === "communication" && (
+          <div className="grid grid-cols-[320px_1fr] gap-8 h-[85vh]">
+            <div className="bg-white rounded-[35px] p-6 shadow-xl overflow-y-auto">
+              <h2 className="text-3xl font-black">Active Chats 💬</h2>
+
+              <div className="space-y-4 mt-6">
+                {acceptedUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => setSelectedChat(user)}
+                    className={`w-full text-left rounded-[25px] p-5 ${
+                      selectedChat?.id === user.id
+                        ? "bg-blue-600 text-white"
+                        : "bg-[#f5f7fb]"
+                    }`}
+                  >
+                    <h3 className="font-black text-xl">{user.startupName}</h3>
+                    <p className="text-sm mt-2">{user.area}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[35px] shadow-xl flex flex-col">
+              {selectedChat ? (
+                <>
+                  <div className="border-b p-6">
+                    <h2 className="text-3xl font-black">
+                      {selectedChat.startupName}
+                    </h2>
+                    <p className="text-slate-500 mt-2">Realtime Chat</p>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {chatMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`max-w-[70%] px-5 py-4 rounded-[25px] ${
+                          message.sender === "mentor"
+                            ? "bg-blue-600 text-white ml-auto"
+                            : "bg-[#f5f7fb]"
+                        }`}
+                      >
+                        {message.text}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border-t p-5 flex gap-4">
+                    <input
+                      placeholder="Type message..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      className="flex-1 border border-slate-200 rounded-2xl px-5 py-4 outline-none"
+                    />
+
+                    <button
+                      onClick={sendMessage}
+                      className="bg-[#07162b] text-white px-8 rounded-2xl font-black"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-3xl font-black text-slate-400">
+                  Select Chat
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
-
-      <style jsx global>{`
-        .input-box {
-          width: 100%;
-          border: 1px solid #dbe4f0;
-          border-radius: 18px;
-          padding: 16px;
-          outline: none;
-          background: white;
-        }
-
-        .input-box:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 4px
-            rgba(37, 99, 235, 0.1);
-        }
-      `}</style>
+        )}
+      </section>
     </main>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-}: {
-  title: string;
-  value: number;
-}) {
-  return (
-    <div className="bg-white rounded-3xl shadow-xl p-6">
-      <p className="text-slate-500">
-        {title}
-      </p>
-
-      <h2 className="text-5xl font-black text-[#071739] mt-3">
-        {value}
-      </h2>
-    </div>
   );
 }

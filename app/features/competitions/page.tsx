@@ -1,10 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  collection,
+  doc,
+  increment,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type Competition = {
-  id: number;
+  id: string;
   title: string;
   organizer: string;
   thumbnail: string;
@@ -16,60 +26,46 @@ type Competition = {
   eligibility: string;
   link: string;
   featured: boolean;
+  participants: number;
 };
 
-const defaultCompetitions: Competition[] = [
-  {
-    id: 1,
-    title: "AI Startup Hackathon",
-    organizer: "CampusConnectAI",
-    thumbnail: "🤖",
-    shortDescription: "Build AI solutions for real startup problems.",
-    fullDescription:
-      "A national-level AI hackathon where startups and students solve real-world problems using AI, ML and automation.",
-    category: "AI",
-    deadline: "2026-07-20",
-    rules: "Team size 1-4. Original work only. Submit prototype and pitch deck.",
-    eligibility: "Open to students, founders and early-stage startups.",
-    link: "https://example.com/register-ai-hackathon",
-    featured: true,
-  },
-  {
-    id: 2,
-    title: "FinTech Innovation Challenge",
-    organizer: "FinTech Labs",
-    thumbnail: "💰",
-    shortDescription: "Pitch fintech solutions for digital payments.",
-    fullDescription:
-      "A startup competition focused on payment, lending, financial inclusion and banking technology ideas.",
-    category: "FinTech",
-    deadline: "2026-08-10",
-    rules: "Submit idea deck, demo video and business model.",
-    eligibility: "Open for MVP-stage startups.",
-    link: "https://example.com/register-fintech",
-    featured: false,
-  },
-];
-
 export default function CompetitionsPage() {
-  const [competitions] = useState<Competition[]>(() => {
-    if (typeof window === "undefined") return defaultCompetitions;
-
-    const saved = localStorage.getItem("organizerCompetitions");
-
-    return saved ? JSON.parse(saved) : defaultCompetitions;
-  });
-
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [selected, setSelected] = useState<Competition | null>(null);
 
-  const filteredCompetitions = useMemo(() => {
+  useEffect(() => {
+    const q = query(
+      collection(db, "competitions"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+      })) as Competition[];
+
+      setCompetitions(data);
+    });
+
+    return () => unsub();
+  }, []);
+
+  const categories = [
+    "All",
+    ...Array.from(new Set(competitions.map((c) => c.category).filter(Boolean))),
+  ];
+
+  const filtered = useMemo(() => {
     return competitions.filter((item) => {
+      const s = search.toLowerCase();
+
       const matchSearch =
-        item.title.toLowerCase().includes(search.toLowerCase()) ||
-        item.category.toLowerCase().includes(search.toLowerCase()) ||
-        item.organizer.toLowerCase().includes(search.toLowerCase());
+        item.title?.toLowerCase().includes(s) ||
+        item.category?.toLowerCase().includes(s) ||
+        item.organizer?.toLowerCase().includes(s);
 
       const matchCategory = category === "All" || item.category === category;
 
@@ -77,10 +73,12 @@ export default function CompetitionsPage() {
     });
   }, [competitions, search, category]);
 
-  const categories = ["All", ...Array.from(new Set(competitions.map((c) => c.category)))];
+  const joinCompetition = async (item: Competition) => {
+    await updateDoc(doc(db, "competitions", item.id), {
+      participants: increment(1),
+    });
 
-  const joinCompetition = (link: string) => {
-    window.open(link, "_blank");
+    window.open(item.link, "_blank");
   };
 
   return (
@@ -91,9 +89,7 @@ export default function CompetitionsPage() {
         <div className="rounded-full border border-white/70 bg-white/60 backdrop-blur-2xl shadow-2xl px-6 py-4 flex items-center justify-between mb-12">
           <div>
             <h1 className="text-2xl font-black">Competitions 🏆</h1>
-            <p className="text-slate-500">
-              Explore startup competitions, hackathons and innovation challenges
-            </p>
+            <p className="text-slate-500">Live events from Organizer Portal</p>
           </div>
 
           <Link href="/dashboard">
@@ -104,14 +100,15 @@ export default function CompetitionsPage() {
         </div>
 
         <div className="rounded-[45px] bg-white/70 border border-white/80 backdrop-blur-2xl shadow-2xl p-10 mb-10">
-          <h2 className="text-6xl font-black">Explore Opportunities 🚀</h2>
+          <h2 className="text-6xl font-black">Explore Competitions 🚀</h2>
+
           <p className="text-xl text-slate-600 mt-5">
-            Discover featured competitions posted by organizers and join using official registration links.
+            Competitions created by organizers appear here instantly.
           </p>
 
           <div className="grid md:grid-cols-2 gap-5 mt-10">
             <input
-              placeholder="Search by title, category or organizer..."
+              placeholder="Search title, category or organizer..."
               className="input-box"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -130,13 +127,23 @@ export default function CompetitionsPage() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {filteredCompetitions.map((item) => (
+          {filtered.map((item) => (
             <div
               key={item.id}
-              className="rounded-[36px] bg-white/80 border border-white p-8 shadow-xl hover:-translate-y-3 hover:shadow-[0_0_45px_rgba(59,130,246,0.25)] transition duration-300"
+              className="rounded-[36px] bg-white/80 border border-white p-8 shadow-xl hover:-translate-y-3 hover:shadow-[0_0_45px_rgba(59,130,246,0.25)] transition"
             >
               <div className="flex items-start gap-6">
-                <div className="text-7xl">{item.thumbnail}</div>
+                <div className="text-7xl">
+                  {item.thumbnail?.startsWith("http") ? (
+                    <img
+                      src={item.thumbnail}
+                      alt="thumbnail"
+                      className="w-24 h-24 rounded-2xl object-cover"
+                    />
+                  ) : (
+                    item.thumbnail || "🏆"
+                  )}
+                </div>
 
                 <div>
                   {item.featured && (
@@ -165,6 +172,10 @@ export default function CompetitionsPage() {
                 <span className="bg-red-100 text-red-700 px-4 py-2 rounded-full font-bold">
                   Deadline: {item.deadline}
                 </span>
+
+                <span className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold">
+                  Participants: {item.participants || 0}
+                </span>
               </div>
 
               <div className="flex gap-4 mt-8">
@@ -176,17 +187,17 @@ export default function CompetitionsPage() {
                 </button>
 
                 <button
-                  onClick={() => joinCompetition(item.link)}
+                  onClick={() => joinCompetition(item)}
                   className="flex-1 bg-[#07162b] text-white py-4 rounded-2xl font-black"
                 >
-                  Join Competition
+                  Join
                 </button>
               </div>
             </div>
           ))}
         </div>
 
-        {filteredCompetitions.length === 0 && (
+        {filtered.length === 0 && (
           <div className="rounded-[36px] bg-white/80 p-10 text-center shadow-xl mt-10">
             <h2 className="text-3xl font-black">No competitions found.</h2>
           </div>
@@ -196,27 +207,20 @@ export default function CompetitionsPage() {
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6">
           <div className="bg-white rounded-[35px] p-8 max-w-3xl w-full shadow-2xl">
-            <div className="flex items-start gap-5">
-              <div className="text-7xl">{selected.thumbnail}</div>
+            <h2 className="text-5xl font-black">{selected.title}</h2>
 
-              <div>
-                <h2 className="text-5xl font-black">{selected.title}</h2>
-                <p className="text-blue-600 font-bold mt-2">
-                  Organizer: {selected.organizer}
-                </p>
-              </div>
-            </div>
+            <p className="text-blue-600 font-bold mt-2">
+              Organizer: {selected.organizer}
+            </p>
 
-            <div className="space-y-5 mt-8">
-              <Info title="Full Description" value={selected.fullDescription} />
-              <Info title="Rules & Guidelines" value={selected.rules} />
-              <Info title="Eligibility" value={selected.eligibility} />
-              <Info title="Deadline" value={selected.deadline} />
-            </div>
+            <Info title="Full Description" value={selected.fullDescription} />
+            <Info title="Rules & Guidelines" value={selected.rules} />
+            <Info title="Eligibility" value={selected.eligibility} />
+            <Info title="Deadline" value={selected.deadline} />
 
             <div className="flex gap-4 mt-8">
               <button
-                onClick={() => joinCompetition(selected.link)}
+                onClick={() => joinCompetition(selected)}
                 className="flex-1 bg-[#07162b] text-white py-4 rounded-2xl font-black"
               >
                 Join Now
@@ -241,13 +245,6 @@ export default function CompetitionsPage() {
           padding: 16px 18px;
           border-radius: 18px;
           outline: none;
-          font-size: 15px;
-        }
-
-        .input-box:focus {
-          border-color: #2563eb;
-          background: white;
-          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
       `}</style>
     </main>
@@ -256,7 +253,7 @@ export default function CompetitionsPage() {
 
 function Info({ title, value }: { title: string; value: string }) {
   return (
-    <div className="bg-[#f4f8ff] rounded-[22px] p-5">
+    <div className="bg-[#f4f8ff] rounded-[22px] p-5 mt-5">
       <h3 className="text-xl font-black">{title}</h3>
       <p className="text-slate-600 mt-2">{value}</p>
     </div>
